@@ -1,0 +1,17 @@
+{
+  "id": "map",
+  "name": "Map",
+  "version": "1.0.0",
+  "description": "A Map module beside Library and Develop: your geotagged photos as thumbnail pins on a basemap that follows the app theme, drag-to-geotag, GPX track correlation, and a filter that narrows the Library to the map view.",
+  "author": "Anthony Reimche",
+  "main": "dist/index.js",
+  "license": "MIT",
+  "categories": ["Modules"],
+  "keywords": ["map", "gps", "geotag", "geolocation", "gpx", "location", "module"],
+  "minAppVersion": "2.6.0",
+  "repository": "anthonyreimche/Map",
+  "permissions": {
+    "network": ["https://tiles.openfreemap.org"],
+    "reason": "Downloads map tiles, fonts and sprites from OpenFreeMap to draw the basemap."
+  }
+}
