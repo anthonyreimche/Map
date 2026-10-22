@@ -38,7 +38,6 @@ export function withoutFix(p: CatalogPhoto): CatalogPhoto {
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 export const placeLabel = (n: number) => `Undo placing ${plural(n, "photo", "photos")}`;
 export const removeLabel = (n: number) => `Undo removing ${plural(n, "location", "locations")}`;
-export const trackLabel = (n: number) => `Undo tagging ${plural(n, "photo", "photos")} from the track`;
 
 async function write(
   updates: readonly { before: CatalogPhoto; after: CatalogPhoto }[],

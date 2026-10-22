@@ -15,6 +15,7 @@ import type {
   SafelightAPI,
   SectionProps,
   SettingsContribution,
+  SlotContribution,
   StackProps,
   StoreApi,
   StylesheetContribution,
@@ -26,6 +27,7 @@ import type {
   UiKit,
 } from "../src/safelight";
 import { act } from "@testing-library/react";
+import { createFakeVariables, type FakeVariables } from "./fake-variables";
 
 export function photo(over: Partial<CatalogPhoto> & { id: string }): CatalogPhoto {
   return {
@@ -55,8 +57,8 @@ export async function flush(): Promise<void> {
   });
 }
 
-const Button = ({ children, onClick, disabled, title, "aria-label": ariaLabel, active }: ButtonProps) => (
-  <button onClick={onClick} disabled={disabled} title={title} aria-label={ariaLabel} aria-pressed={active}>
+const Button = ({ children, onClick, disabled, title, "aria-label": ariaLabel, active, type = "button" }: ButtonProps) => (
+  <button type={type} onClick={onClick} disabled={disabled} title={title} aria-label={ariaLabel} aria-pressed={active}>
     {children}
   </button>
 );
@@ -69,8 +71,8 @@ const Toggle = ({ checked, onChange, label, ariaLabel }: ToggleProps) => (
 const NumberInput = ({ value, onChange, "aria-label": ariaLabel }: NumberInputProps) => (
   <input type="number" value={value} aria-label={ariaLabel} onChange={(e) => onChange(Number(e.target.value))} />
 );
-const TextInput = ({ value, onChange, placeholder, "aria-label": ariaLabel }: TextInputProps) => (
-  <input value={value} placeholder={placeholder} aria-label={ariaLabel} onChange={(e) => onChange(e.target.value)} />
+const TextInput = ({ value, onChange, placeholder, "aria-label": ariaLabel, autoFocus }: TextInputProps) => (
+  <input value={value} placeholder={placeholder} aria-label={ariaLabel} autoFocus={autoFocus} onChange={(e) => onChange(e.target.value)} />
 );
 const Field = ({ label, children }: FieldProps) => (
   <div>
@@ -138,6 +140,7 @@ export interface Harness {
   menuItems: GridMenuItemContribution[];
   settings: SettingsContribution[];
   stylesheets: StylesheetContribution[];
+  slots: SlotContribution[];
   navigations: string[];
   requested: string[];
   relocated: CatalogPhoto[][];
@@ -147,9 +150,12 @@ export interface Harness {
   catalog: StoreApi<CatalogState>;
   theme: StoreApi<ThemeStoreState>;
   contextMenus: string[];
+  /** Shared by every harness given the same instance, to test two extensions against one set of variables. */
+  variables: FakeVariables;
 }
 
-export function createHarness(opts: { photos?: CatalogPhoto[] } = {}): Harness {
+export function createHarness(opts: { photos?: CatalogPhoto[]; variables?: FakeVariables; extensionId?: string } = {}): Harness {
+  const variables = opts.variables ?? createFakeVariables();
   const h = {
     modules: [] as ModuleContribution[],
     panels: [] as PanelContribution[],
@@ -159,6 +165,7 @@ export function createHarness(opts: { photos?: CatalogPhoto[] } = {}): Harness {
     menuItems: [] as GridMenuItemContribution[],
     settings: [] as SettingsContribution[],
     stylesheets: [] as StylesheetContribution[],
+    slots: [] as SlotContribution[],
     navigations: [] as string[],
     requested: [] as string[],
     relocated: [] as CatalogPhoto[][],
@@ -213,7 +220,7 @@ export function createHarness(opts: { photos?: CatalogPhoto[] } = {}): Harness {
 
   const api: SafelightAPI = {
     version: 1,
-    extensionId: "map",
+    extensionId: opts.extensionId ?? "map",
     react: React,
     registerModule: (c) => void h.modules.push(c),
     registerPanel: (c) => void h.panels.push(c),
@@ -225,6 +232,7 @@ export function createHarness(opts: { photos?: CatalogPhoto[] } = {}): Harness {
     registerGridMenuItem: (c) => void h.menuItems.push(c),
     registerSettings: (c) => void h.settings.push(c),
     registerStylesheet: (c) => void h.stylesheets.push(c),
+    registerSlot: (c) => void h.slots.push(c),
     settings: {
       get: <T,>(key: string, fallback: T): T => (h.values.has(key) ? (h.values.get(key) as T) : fallback),
       set: (key, value) => {
@@ -258,10 +266,12 @@ export function createHarness(opts: { photos?: CatalogPhoto[] } = {}): Harness {
       useCullingShortcuts: () => {},
       requestThumbnail: (id) => void h.requested.push(id),
     },
+    variables: variables.forExtension(opts.extensionId ?? "map"),
   };
   return {
     ...h,
     api,
+    variables,
     catalog: catalog as unknown as StoreApi<CatalogState>,
     theme: theme as unknown as StoreApi<ThemeStoreState>,
   };

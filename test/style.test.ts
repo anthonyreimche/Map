@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { BASEMAP_KEYS, NEUTRAL_TOKENS, palette } from "../src/palette";
-import { DEFAULT_ORIGIN, FONT_BOLD, FONT_REGULAR, OMT_LAYERS, buildStyle, styleColours, styleOrigins } from "../src/style";
+import { DEFAULT_ORIGIN, FONT_BOLD, FONT_REGULAR, OMT_LAYERS, basemapColours, buildStyle, styleColours, styleOrigins } from "../src/style";
 import type { StyleLayer } from "../src/style";
 
 // Not `new URL("../safelight.json", import.meta.url)`: Vite statically
@@ -71,5 +71,15 @@ describe("manifest", () => {
       permissions: { network: string[] };
     };
     expect(manifest.permissions.network).toEqual(styleOrigins(style));
+  });
+});
+
+describe("basemapColours", () => {
+  it("reads the land, water and boundary colours the basic map paints with", () => {
+    expect(basemapColours(style)).toEqual({ land: p.background, water: p.water, line: p.boundary });
+  });
+
+  it("falls back to Safelight Neutral for a style without those layers", () => {
+    expect(basemapColours({ ...style, layers: [] })).toEqual(basemapColours(buildStyle(palette(NEUTRAL_TOKENS))));
   });
 });

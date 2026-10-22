@@ -176,9 +176,21 @@ export interface StylesheetContribution {
   css: string;
 }
 
+/** Named regions of core UI an extension may render into. */
+export type SlotName = "library-toolbar" | "library-subbar" | "develop-toolbar" | "develop-canvas-overlay" | "develop-detail";
+
+export interface SlotContribution {
+  id: string;
+  slot: SlotName;
+  component: ComponentType;
+  order?: number;
+}
+
 export interface ButtonProps {
   variant?: "primary" | "secondary" | "ghost" | "danger";
   size?: "sm" | "md";
+  /** Defaults to "button", so a Button in a form never submits it by accident. */
+  type?: "button" | "submit";
   active?: boolean;
   full?: boolean;
   disabled?: boolean;
@@ -211,6 +223,7 @@ export interface TextInputProps {
   onChange(value: string): void;
   placeholder?: string;
   "aria-label"?: string;
+  autoFocus?: boolean;
   style?: CSSProperties;
 }
 
@@ -265,6 +278,45 @@ export interface UiKit {
   };
 }
 
+/** Who made a write or a registration. */
+export interface VariableWriter {
+  extension: string;
+  window: string;
+}
+
+/** Higher n wins; an equal n is broken by window id. */
+export interface VariableRevision {
+  n: number;
+  window: string;
+}
+
+export interface VariableSnapshot<T> {
+  name: string;
+  /** Deep-frozen. */
+  value: T;
+  revision: VariableRevision;
+  writer: VariableWriter;
+  registeredBy: VariableWriter;
+  description?: string;
+}
+
+export type VariableWriteResult<T> =
+  | { ok: true; revision: VariableRevision }
+  | { ok: false; reason: "stale"; current: VariableSnapshot<T> }
+  | { ok: false; reason: "unregistered" }
+  | { ok: false; reason: "invalid"; message: string };
+
+/** Core's shared variables (Safelight 3.2.0+): named JSON values every
+ *  extension can share across windows. A set() from an extension that hasn't
+ *  seen the current value is refused; update() reads and writes the latest. */
+export interface SharedVariablesAPI {
+  register<T>(name: string, init: { initial: T; description?: string }): VariableSnapshot<T>;
+  get<T>(name: string): VariableSnapshot<T> | undefined;
+  subscribe<T>(name: string, listener: (snapshot: VariableSnapshot<T>) => void): () => void;
+  set<T>(name: string, value: T): VariableWriteResult<T>;
+  update<T>(name: string, fn: (current: T) => T): VariableWriteResult<T>;
+}
+
 export interface SafelightAPI {
   version: 1;
   extensionId: string;
@@ -277,6 +329,7 @@ export interface SafelightAPI {
   registerGridMenuItem(c: GridMenuItemContribution): void;
   registerSettings(c: SettingsContribution): void;
   registerStylesheet(c: StylesheetContribution): void;
+  registerSlot(c: SlotContribution): void;
   settings: {
     get<T>(key: string, fallback: T): T;
     set(key: string, value: unknown): void;
@@ -299,6 +352,7 @@ export interface SafelightAPI {
     useCullingShortcuts(options?: CullingShortcutOptions): void;
     requestThumbnail(photoId: string): void;
   };
+  variables: SharedVariablesAPI;
 }
 
 export interface ExtensionModule {

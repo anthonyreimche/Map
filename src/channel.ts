@@ -49,10 +49,16 @@ export function toMessageListener(handler: (ids: string[]) => void): (e: { data:
 /** The real transport. BroadcastChannel never delivers a post back to the
  *  port that sent it — exactly what's wanted here, since a window only posts
  *  after finding it has no local commands to call directly. Where it is
- *  absent, a no-op stands in. */
+ *  absent, or refuses to open (an opaque origin throws), a no-op stands in:
+ *  "Show on map" then reaches only this window's own Map. */
 export function broadcastChannelFactory(): FocusChannel {
   if (typeof BroadcastChannel === "undefined") return noop;
-  const bc = new BroadcastChannel(CHANNEL_NAME);
+  let bc: BroadcastChannel;
+  try {
+    bc = new BroadcastChannel(CHANNEL_NAME);
+  } catch {
+    return noop;
+  }
   return {
     post: (ids) => bc.postMessage({ ids: [...ids] }),
     subscribe: (handler) => {

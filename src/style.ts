@@ -1,4 +1,4 @@
-import type { Palette } from "./palette";
+import { NEUTRAL_TOKENS, palette, type Palette } from "./palette";
 
 export const DEFAULT_ORIGIN = "https://tiles.openfreemap.org";
 export const FONT_REGULAR = "Noto Sans Regular";
@@ -10,6 +10,11 @@ export const ATTRIBUTION: readonly { label: string; href: string }[] = [
   { label: "© OpenFreeMap", href: "https://openfreemap.org" },
   { label: "© OpenMapTiles", href: "https://www.openmaptiles.org/" },
   { label: "Data © OpenStreetMap contributors", href: "https://www.openstreetmap.org/copyright" },
+];
+
+/** The basic map's credit: its world outline is Natural Earth's (public domain). */
+export const LAND_ATTRIBUTION: readonly { label: string; href: string }[] = [
+  { label: "Made with Natural Earth", href: "https://www.naturalearthdata.com" },
 ];
 
 /** OpenMapTiles schema layers present in OpenFreeMap's planet tiles. */
@@ -49,8 +54,11 @@ export interface MapStyle {
 }
 
 /** The basemap vector source's id — exported so callers (MapView's tile-error
- *  gating) can tell a basemap error/load apart from our own photo/track sources. */
+ *  gating) can tell a basemap error/load apart from our own photo/overlay sources. */
 export const BASEMAP_SOURCE = "openmaptiles";
+const LAYER_LAND = "base-background";
+const LAYER_WATER = "base-water";
+const LAYER_BORDER = "base-boundary-2";
 const SOURCE = BASEMAP_SOURCE;
 const NAME = ["coalesce", ["get", "name:latin"], ["get", "name"]];
 const classIn = (...classes: string[]) => ["match", ["get", "class"], classes, true, false];
@@ -122,12 +130,12 @@ export function buildStyle(p: Palette, origin: string = DEFAULT_ORIGIN): MapStyl
   });
 
   const layers: StyleLayer[] = [
-    { id: "base-background", type: "background", paint: { "background-color": p.background } },
+    { id: LAYER_LAND, type: "background", paint: { "background-color": p.background } },
     fill("base-landcover-wood", "landcover", p.wood, classIn("wood")),
     fill("base-landcover-grass", "landcover", p.park, classIn("grass", "farmland")),
     fill("base-landuse", "landuse", p.builtUp, classIn("residential", "suburb", "neighbourhood", "industrial", "commercial", "retail"), 8),
     fill("base-park", "park", p.park),
-    fill("base-water", "water", p.water),
+    fill(LAYER_WATER, "water", p.water),
     {
       id: "base-waterway",
       type: "line",
@@ -149,7 +157,7 @@ export function buildStyle(p: Palette, origin: string = DEFAULT_ORIGIN): MapStyl
       paint: { "line-color": p.boundary, "line-width": 0.8, "line-dasharray": [3, 2] },
     },
     {
-      id: "base-boundary-2",
+      id: LAYER_BORDER,
       type: "line",
       source: SOURCE,
       "source-layer": "boundary",
@@ -180,6 +188,27 @@ export function buildStyle(p: Palette, origin: string = DEFAULT_ORIGIN): MapStyl
     sources: { [SOURCE]: { type: "vector", url: `${origin}/planet` } },
     glyphs: `${origin}/fonts/{fontstack}/{range}.pbf`,
     layers,
+  };
+}
+
+export interface BasemapColours {
+  land: string;
+  water: string;
+  line: string;
+}
+
+/** The colours the basic map paints its world outline with, read off the
+ *  style the full map draws, so both follow the theme the same way. */
+export function basemapColours(style: MapStyle): BasemapColours {
+  const neutral = palette(NEUTRAL_TOKENS);
+  const paint = (id: string, key: string, fallback: string) => {
+    const v = style.layers.find((l) => l.id === id)?.paint?.[key];
+    return typeof v === "string" ? v : fallback;
+  };
+  return {
+    land: paint(LAYER_LAND, "background-color", neutral.background),
+    water: paint(LAYER_WATER, "fill-color", neutral.water),
+    line: paint(LAYER_BORDER, "line-color", neutral.boundary),
   };
 }
 

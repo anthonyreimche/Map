@@ -1,5 +1,6 @@
 // The slice of a map the view drives. MapLibre implements it in
-// maplibre-port.ts; tests hand the view a fake.
+// maplibre-port.ts, the Canvas 2D stand-in in canvas-port.ts; tests hand the
+// view a fake.
 
 import type { Bounds, LonLat } from "./geo";
 import type { PinImage } from "./pins";
@@ -14,8 +15,18 @@ export interface RenderedHit {
   lat: number;
 }
 
+/** "full" is MapLibre over the vector basemap; "basic" is the Canvas 2D map
+ *  over a world outline, for a machine where WebGL is unavailable. */
+export type MapKind = "full" | "basic";
+
+/** "ready" fires once, when the style is parsed and our sources and layers may
+ *  be added; basemap tiles may still be loading. "webglcontextrestored" means
+ *  the GPU is back after a "webglcontextlost". */
+export type MapEvent = "ready" | "movestart" | "moveend" | "webglcontextlost" | "webglcontextrestored";
+
 export interface MapPort {
-  on(event: "load" | "movestart" | "moveend" | "webglcontextlost", handler: () => void): void;
+  readonly kind: MapKind;
+  on(event: MapEvent, handler: () => void): void;
   /** sourceId is undefined for an error that didn't originate from a source
    *  (a style/WebGL error); callers gate on it to tell a basemap tile failure
    *  apart from one of our own sources or an unrelated error. */
@@ -42,7 +53,10 @@ export interface MapPort {
   unproject(x: number, y: number): LonLat;
   hitTest(x: number, y: number, layers: readonly string[]): RenderedHit[];
   setCursor(cursor: string): void;
+  /** Device pixels per layout pixel: the display's scale times Safelight's
+   *  interface zoom. */
+  setPixelRatio(ratio: number): void;
   remove(): void;
 }
 
-export type MapFactory = (container: HTMLElement, style: MapStyle, center: LonLat, zoom: number) => Promise<MapPort>;
+export type MapFactory = (container: HTMLElement, style: MapStyle, center: LonLat, zoom: number, pixelRatio: number) => Promise<MapPort>;

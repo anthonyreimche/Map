@@ -37,7 +37,7 @@ export const MAX_CHROMA = 28;
 const DARK_BELOW = 0.35;
 const WATER_TINT: Rgb = [70, 105, 135];
 const WOOD_TINT: Rgb = [98, 128, 84];
-const TRACK_TINT: Rgb = [230, 150, 60];
+const OVERLAY_TINT: Rgb = [230, 150, 60];
 const BLACK: Rgb = [0, 0, 0];
 
 export function parseHex(s: string): Rgb | null {
@@ -98,14 +98,14 @@ export interface Palette {
   boundary: string;
   label: string;
   labelHalo: string;
-  /** Pins, clusters and the track: UI colours, exempt from the chroma ceiling. */
+  /** Pins, clusters and overlays: UI colours, exempt from the chroma ceiling. */
   pinFill: string;
   pinBorder: string;
   clusterFill: string;
   clusterStroke: string;
   clusterText: string;
   ring: string;
-  track: string;
+  overlay: string;
 }
 
 export const BASEMAP_KEYS = [
@@ -153,6 +153,6 @@ export function palette(tokens: ThemeTokens): Palette {
     clusterStroke: toHex(ink),
     clusterText: toHex(ink),
     ring: toHex(ink),
-    track: toHex(mix(ink, TRACK_TINT, 0.6)),
+    overlay: toHex(mix(ink, OVERLAY_TINT, 0.6)),
   };
 }

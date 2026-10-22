@@ -13,7 +13,8 @@ describe("map store", () => {
     const s = store().getState();
     expect(s.filterToView).toBe(false);
     expect(s.bounds).toBeNull();
-    expect(s.track).toBeNull();
+    expect(s.overlays).toEqual([]);
+    expect(s.pendingFit).toBeNull();
     expect(s.undo).toEqual([]);
     expect(s.commands).toBeNull();
   });
@@ -28,10 +29,22 @@ describe("map store", () => {
     expect(store().getState().undo.length).toBe(UNDO_DEPTH - 1);
   });
 
-  it("records counts and a loaded track", () => {
+  it("records counts, and overlays with their drawn data", () => {
     store().getState().setCounts(3, 10, 2);
     expect(store().getState()).toMatchObject({ located: 3, total: 10, inView: 2 });
-    store().getState().setTrack({ name: "t", segments: [], pointCount: 0, start: 0, end: 0 }, "walk.gpx");
-    expect(store().getState().trackFile).toBe("walk.gpx");
+    store().getState().setOverlays([{ key: "k", label: "x", lines: [[[0, 0], [1, 1]]], points: [], bounds: null }]);
+    expect(store().getState().overlayData.lines.features).toHaveLength(1);
+  });
+
+  it("drops a pending overlay fit when a Show on map request comes in after it", () => {
+    store().getState().setPendingFit("k");
+    store().getState().setPendingFocus(["a"]);
+    expect(store().getState()).toMatchObject({ pendingFocus: ["a"], pendingFit: null });
+  });
+
+  it("keeps a pending overlay fit when the pending focus is only cleared", () => {
+    store().getState().setPendingFit("k");
+    store().getState().setPendingFocus(null);
+    expect(store().getState()).toMatchObject({ pendingFocus: null, pendingFit: "k" });
   });
 });

@@ -30,6 +30,80 @@ export async function undoLast(): Promise<void> {
   }
 }
 
+/** Fits the map to one of the overlays other extensions draw (map.overlays). */
+function OverlaysMenu() {
+  const overlays = useMapStore((s) => s.overlays);
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef<HTMLDivElement | null>(null);
+  const { Button } = ui;
+
+  React.useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    const onPointerDown = (e: Event) => {
+      if (!(e.target instanceof Node) || !ref.current?.contains(e.target)) setOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    // Capture phase, so a click that opens something else still closes this.
+    window.addEventListener("pointerdown", onPointerDown, true);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("pointerdown", onPointerDown, true);
+    };
+  }, [open]);
+
+  if (overlays.length === 0) return null;
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <Button size="sm" active={open} aria-label="Overlays" title="Fit the map to a drawn overlay" onClick={() => setOpen((v) => !v)}>
+        Overlays ▾
+      </Button>
+      {open && (
+        <div
+          role="menu"
+          style={{
+            position: "absolute",
+            top: "100%",
+            left: 0,
+            marginTop: 2,
+            minWidth: 160,
+            display: "flex",
+            flexDirection: "column",
+            gap: 2,
+            padding: 4,
+            borderRadius: 4,
+            background: ui.tokens.surface1,
+            border: `1px solid ${ui.tokens.border}`,
+            zIndex: 3,
+            whiteSpace: "nowrap",
+          }}
+        >
+          {overlays.map((o) => {
+            // The label may be empty; the key still names the overlay.
+            const name = o.label || o.key;
+            return (
+              <Button
+                key={o.key}
+                size="sm"
+                variant="ghost"
+                title={`Fit the map to ${name}`}
+                onClick={() => {
+                  setOpen(false);
+                  store().getState().commands?.fitToOverlay(o.key);
+                }}
+              >
+                {name}
+              </Button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Toolbar() {
   const filterToView = useMapStore((s) => s.filterToView);
   const undo = useMapStore((s) => s.undo);
@@ -61,6 +135,7 @@ export function Toolbar() {
         <Button size="sm" onClick={() => store().getState().commands?.fitToPhotos()} title="Zoom to every photo with a location">
           Fit to photos
         </Button>
+        <OverlaysMenu />
         {!isDetachedWindow() && (
           <Toggle checked={filterToView} onChange={setFilter} label="Filter Library to map view" ariaLabel="Filter Library to map view" />
         )}

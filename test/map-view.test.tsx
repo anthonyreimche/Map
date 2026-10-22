@@ -3,20 +3,31 @@ import { act, cleanup, fireEvent, render, screen, within } from "@testing-librar
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DND_PHOTOS } from "../src/dnd";
 import { FILTER_ID } from "../src/filter";
-import type { Bounds, LonLat } from "../src/geo";
+import { boundsOf, type Bounds, type LonLat } from "../src/geo";
 import { withFix, withoutFix } from "../src/geotag";
-import { LAYER_CLUSTERS, LAYER_PINS, LAYER_RING, LAYER_TRACK, PHOTO_SOURCE, selectionFilter } from "../src/map-layers";
+import {
+  LAYER_CLUSTERS,
+  LAYER_OVERLAY_LINE,
+  LAYER_OVERLAY_POINT,
+  LAYER_PINS,
+  LAYER_RING,
+  OVERLAY_LINE_SOURCE,
+  OVERLAY_POINT_SOURCE,
+  PHOTO_COUNT_SOURCE,
+  PHOTO_SOURCE,
+  selectionFilter,
+} from "../src/map-layers";
 import type { MapFactory, MapPort, RenderedHit } from "../src/map-port";
 import { MapView } from "../src/MapView";
 import type { PinImage } from "../src/pins";
 import { initRuntime } from "../src/rt";
-import { ATTRIBUTION, BASEMAP_SOURCE } from "../src/style";
+import { ATTRIBUTION, BASEMAP_SOURCE, LAND_ATTRIBUTION } from "../src/style";
 import { initStore, store } from "../src/store";
 import { createHarness, flush, located, photo, type Harness } from "./harness";
 
 type Handler = (...args: unknown[]) => void;
 
-function fakePort() {
+function fakePort(kind: MapPort["kind"] = "full") {
   const handlers = new Map<string, Handler[]>();
   const on = (event: string, h: Handler) => {
     const list = handlers.get(event) ?? [];
@@ -38,11 +49,13 @@ function fakePort() {
     fitBounds: [] as Bounds[],
     addImage: [] as string[],
     updateImage: [] as string[],
+    pixelRatios: [] as number[],
   };
   let hits: RenderedHit[] = [];
   let bounds: Bounds = { west: -10, south: -10, east: 10, north: 10 };
   let unprojected: LonLat = { lon: 2.35, lat: 48.85 };
   const port: MapPort = {
+    kind,
     on: (event, h) => on(event, h),
     onError: (h) => on("error", h as Handler),
     onSourceLoaded: (h) => on("sourceloaded", h as Handler),
@@ -89,6 +102,7 @@ function fakePort() {
     unproject: () => unprojected,
     hitTest: (_x, _y, layers) => hits.filter((h) => layers.includes(h.layer)),
     setCursor: () => {},
+    setPixelRatio: (r) => void calls.pixelRatios.push(r),
     remove: () => void (removed = true),
   };
   return {
@@ -115,7 +129,7 @@ let fake: ReturnType<typeof fakePort>;
 async function mount() {
   render(<MapView factory={async () => fake.port} draw={async () => img} pixelRatio={1} />);
   await flush();
-  fake.fire("load");
+  fake.fire("ready");
   await flush();
   return screen.getByTestId("map-canvas");
 }
@@ -136,10 +150,10 @@ beforeEach(() => {
 afterEach(() => cleanup());
 
 describe("MapView", () => {
-  it("adds our sources and layers on load and feeds the located photos", async () => {
+  it("adds our sources and layers once the map is ready and feeds the located photos", async () => {
     await mount();
-    expect(fake.calls.sources).toEqual(expect.arrayContaining([PHOTO_SOURCE, "track"]));
-    expect(fake.calls.layers).toEqual(expect.arrayContaining([LAYER_TRACK, LAYER_CLUSTERS, LAYER_RING, LAYER_PINS]));
+    expect(fake.calls.sources).toEqual(expect.arrayContaining([PHOTO_SOURCE, OVERLAY_LINE_SOURCE, OVERLAY_POINT_SOURCE]));
+    expect(fake.calls.layers).toEqual(expect.arrayContaining([LAYER_OVERLAY_LINE, LAYER_OVERLAY_POINT, LAYER_CLUSTERS, LAYER_RING, LAYER_PINS]));
     // The photo source's own initial spec carries the data (addSource, not a
     // separate setData) — the content-based dedup means a same-content
     // setData right after never fires; see "builds the photo source..." below.
@@ -149,12 +163,12 @@ describe("MapView", () => {
     expect(store().getState().commands).not.toBeNull();
   });
 
-  it("builds the photo source and its layers exactly once at load", async () => {
+  it("builds the photo source and its layers exactly once when ready", async () => {
     await mount();
     expect(fake.calls.sources.filter((id) => id === PHOTO_SOURCE).length).toBe(1);
     expect(fake.calls.layers.filter((id) => id === LAYER_PINS).length).toBe(1);
     // addSource already carried the located photos, so the photos effect
-    // right after "load" has nothing new to push.
+    // right after "ready" has nothing new to push.
     expect(fake.calls.setData.filter(([id]) => id === PHOTO_SOURCE).length).toBe(0);
   });
 
@@ -177,20 +191,97 @@ describe("MapView", () => {
       />,
     );
     await flush();
-    fake.fire("load");
+    fake.fire("ready");
     await flush();
     expect(opened).toEqual([[{ lon: 2.35, lat: 48.85 }, 9]]);
     expect(fake.calls.fitBounds).toEqual([]);
   });
 
-  it("publishes the bounds and the in-view count as soon as the map loads", async () => {
+  it("fits to an overlay through its command, and to one added before it mounted", async () => {
+    store().getState().setOverlays([{ key: "k", label: "x", lines: [[[3, 3], [4, 4]]], points: [], bounds: { west: 3, south: 3, east: 4, north: 4 } }]);
+    store().getState().setPendingFit("k");
+    await mount();
+    expect(fake.calls.fitBounds).toContainEqual({ west: 3, south: 3, east: 4, north: 4 });
+    expect(store().getState().pendingFit).toBeNull();
+    fake.calls.fitBounds.length = 0;
+    act(() => store().getState().commands!.fitToOverlay("k"));
+    expect(fake.calls.fitBounds).toEqual([{ west: 3, south: 3, east: 4, north: 4 }]);
+  });
+
+  it("lets a later Show on map request win over a pending overlay fit", async () => {
+    // GPS Track queued a fit while the Map wasn't showing, then Show on map
+    // asked for a photo: the photo must be where the view ends up.
+    const overlayBounds = { west: 3, south: 3, east: 4, north: 4 };
+    store().getState().setOverlays([{ key: "k", label: "x", lines: [[[3, 3], [4, 4]]], points: [], bounds: overlayBounds }]);
+    store().getState().setPendingFit("k");
+    store().getState().setPendingFocus(["a"]);
+    await mount();
+    const photoBounds = { west: 1 - 0.01, south: 1 - 0.01, east: 1 + 0.01, north: 1 + 0.01 };
+    const fits = fake.calls.fitBounds;
+    expect(fits[fits.length - 1]).toEqual(photoBounds);
+    expect(fits).not.toContainEqual(overlayBounds);
+    expect(store().getState()).toMatchObject({ pendingFocus: null, pendingFit: null });
+  });
+
+  describe("overlays through a rebuild of our layers", () => {
+    const ride = { key: "k", label: "x", lines: [[[1, 1], [2, 2]]] as [number, number][][], points: [[3, 3]] as [number, number][], bounds: null };
+    const drawn = () => [
+      (fake.dataOf(OVERLAY_LINE_SOURCE) as { features: unknown[] }).features.length,
+      (fake.dataOf(OVERLAY_POINT_SOURCE) as { features: unknown[] }).features.length,
+    ];
+    const lineSourceAdds = () => fake.calls.sources.filter((id) => id === OVERLAY_LINE_SOURCE).length;
+
+    it("keeps drawing them after a theme change", async () => {
+      store().getState().setOverlays([ride]);
+      await mount();
+      const before = lineSourceAdds();
+      act(() => h.theme.setState({ activeId: "core.dark" }));
+      // The rebuild re-added the sources: what they hold now came from it.
+      expect(lineSourceAdds()).toBe(before + 1);
+      expect(drawn()).toEqual([1, 1]);
+    });
+
+    it("keeps drawing them after a cluster-radius change", async () => {
+      store().getState().setOverlays([ride]);
+      await mount();
+      const before = lineSourceAdds();
+      act(() => h.api.settings.set("clusterRadius", 60));
+      expect(lineSourceAdds()).toBe(before + 1);
+      expect(drawn()).toEqual([1, 1]);
+    });
+  });
+
+  it("keeps an overlay fit inside the poles", async () => {
+    // boundsOf pads a lone point by a hair, which at a pole is past ±90,
+    // and MapLibre's fitBounds throws on that.
+    store().getState().setOverlays([{ key: "p", label: "x", lines: [], points: [[10, 90]], bounds: boundsOf([{ lon: 10, lat: 90 }]) }]);
+    await mount();
+    fake.calls.fitBounds.length = 0;
+    act(() => store().getState().commands!.fitToOverlay("p"));
+    expect(fake.calls.fitBounds).toHaveLength(1);
+    expect(fake.calls.fitBounds[0].north).toBeLessThanOrEqual(90);
+    expect(fake.calls.fitBounds[0].south).toBeGreaterThanOrEqual(-90);
+  });
+
+  it("draws the overlays at ready and pushes each change to both sources", async () => {
+    const ride = { key: "k", label: "x", lines: [[[1, 1], [2, 2]]] as [number, number][][], points: [[3, 3]] as [number, number][], bounds: null };
+    store().getState().setOverlays([ride]);
+    await mount();
+    expect((fake.dataOf(OVERLAY_LINE_SOURCE) as { features: unknown[] }).features).toHaveLength(1);
+    expect((fake.dataOf(OVERLAY_POINT_SOURCE) as { features: unknown[] }).features).toHaveLength(1);
+    act(() => store().getState().setOverlays([]));
+    expect((fake.dataOf(OVERLAY_LINE_SOURCE) as { features: unknown[] }).features).toEqual([]);
+    expect((fake.dataOf(OVERLAY_POINT_SOURCE) as { features: unknown[] }).features).toEqual([]);
+  });
+
+  it("publishes the bounds and the in-view count as soon as the map is ready", async () => {
     fake.setBounds({ west: 0, south: 0, east: 1.5, north: 1.5 });
     await mount();
     expect(store().getState().bounds).toEqual({ west: 0, south: 0, east: 1.5, north: 1.5 });
     expect(store().getState()).toMatchObject({ located: 2, total: 3, inView: 1 });
   });
 
-  it("keeps the selection ring current once the layers are built on load", async () => {
+  it("keeps the selection ring current once the layers are built", async () => {
     h.catalog.getState().select("a");
     await mount();
     expect(fake.filterOf(LAYER_RING)).toEqual(selectionFilter(["a"]));
@@ -230,6 +321,15 @@ describe("MapView", () => {
     fireEvent.pointerDown(canvas, { clientX: 10, clientY: 10 });
     fireEvent.click(canvas, { clientX: 10, clientY: 10, shiftKey: true });
     expect([...h.catalog.getState().selectedIds].sort()).toEqual(["a", "c"]);
+  });
+
+  it("names the photo under the pointer, but not while a drag pans the map", async () => {
+    const canvas = await mount();
+    fake.hit(pinHit("c"));
+    fireEvent.mouseMove(canvas, { clientX: 5, clientY: 5, buttons: 1 });
+    expect(screen.queryByText("c.NEF")).toBeNull();
+    fireEvent.mouseMove(canvas, { clientX: 5, clientY: 5, buttons: 0 });
+    expect(screen.getByText("c.NEF")).toBeTruthy();
   });
 
   it("opens the photo in Develop on double-click", async () => {
@@ -287,6 +387,24 @@ describe("MapView", () => {
     await flush();
     expect(h.relocated[0].map((p) => [p.id, p.exif.gpsLatitude, p.exif.gpsLongitude])).toEqual([["b", 10, -160]]);
     expect(screen.queryByRole("menu")).toBeNull();
+  });
+
+  it("opens Set location from the map's menu for the selection, at the clicked point", async () => {
+    const canvas = await mount();
+    act(() => h.catalog.getState().select("b"));
+    fake.unprojectTo({ lon: 200, lat: 10 });
+    fireEvent.contextMenu(canvas, { clientX: 20, clientY: 20 });
+    fireEvent.click(within(screen.getByRole("menu")).getByRole("button", { name: "Set location…" }));
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(store().getState().locationRequest).toEqual({ ids: ["b"], initial: { lon: -160, lat: 10 } });
+    const dialog = screen.getByRole("dialog", { name: "Set location" });
+    expect((within(dialog).getByRole("textbox") as HTMLInputElement).value).toBe("10.00000, -160.00000");
+  });
+
+  it("offers Set location from the map's menu only with a selection", async () => {
+    const canvas = await mount();
+    fireEvent.contextMenu(canvas, { clientX: 20, clientY: 20 });
+    expect((within(screen.getByRole("menu")).getByRole("button", { name: "Set location…" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("moves the map's menu to a second right-click on the map", async () => {
@@ -452,7 +570,7 @@ describe("MapView", () => {
     h.catalog.getState().select("a");
     const first = render(<MapView factory={async () => fake.port} draw={async () => img} pixelRatio={1} />);
     await flush();
-    fake.fire("load");
+    fake.fire("ready");
     await flush();
     expect(fake.calls.easeTo.length).toBe(1);
     first.unmount();
@@ -512,8 +630,8 @@ describe("MapView", () => {
   it("ignores pointer interaction before the map has finished loading", async () => {
     render(<MapView factory={async () => fake.port} draw={async () => img} pixelRatio={1} />);
     await flush();
-    // Deliberately not firing "load" yet: the map exists but hasn't finished
-    // loading, so our layers don't exist and a hit test would be premature.
+    // Deliberately not firing "ready" yet: the map exists but its style isn't
+    // parsed, so our layers don't exist and a hit test would be premature.
     const canvas = screen.getByTestId("map-canvas");
     fake.hit(pinHit("a"));
     fireEvent.pointerDown(canvas, { clientX: 10, clientY: 10 });
@@ -554,7 +672,7 @@ describe("MapView", () => {
     });
     const { unmount } = render(<MapView factory={async () => fake.port} draw={() => pending} pixelRatio={1} />);
     await flush();
-    fake.fire("load");
+    fake.fire("ready");
     await flush();
     // "c" has a thumbnailUrl (see beforeEach), so this reaches the rasteriser
     // and calls the injected `draw`, which we're holding open via `pending`.
@@ -585,7 +703,7 @@ describe("MapView", () => {
 
     render(<MapView factory={factory} draw={draw} pixelRatio={1} />);
     await flush();
-    portA.fire("load");
+    portA.fire("ready");
     await flush();
     // Starts a draw against generation 0's rasteriser, held open via `pending`.
     portA.fire("imagemissing", "pin:c");
@@ -596,7 +714,7 @@ describe("MapView", () => {
     portA.fire("webglcontextlost");
     fireEvent.click(screen.getByRole("button", { name: "Reload map" }));
     await flush();
-    portB.fire("load");
+    portB.fire("ready");
     await flush();
     expect(portA.removed()).toBe(true);
     expect(portB.removed()).toBe(false);
@@ -646,7 +764,7 @@ describe("MapView", () => {
     expect(screen.getByText("The map could not start.")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Reload map" }));
     await flush();
-    fake.fire("load");
+    fake.fire("ready");
     await flush();
     expect(screen.queryByText("The map could not start.")).toBeNull();
     expect(screen.getByTestId("map-canvas")).toBeTruthy();
@@ -676,14 +794,13 @@ describe("MapView", () => {
       if (attempts++ === 0) throw new Error("no webgl");
       return fake.port;
     };
-    const draw = async () => img;
-    const { rerender } = render(<MapView factory={flaky} draw={draw} pixelRatio={1} />);
+    const { rerender } = render(<MapView factory={flaky} draw={async () => img} pixelRatio={1} />);
     await flush();
     await flush();
     expect(screen.getByText("The map could not start.")).toBeTruthy();
-    rerender(<MapView factory={flaky} draw={draw} pixelRatio={2} />);
+    rerender(<MapView factory={flaky} draw={async () => img} pixelRatio={1} />);
     await flush();
-    fake.fire("load");
+    fake.fire("ready");
     await flush();
     expect(attempts).toBe(2);
     expect(screen.queryByText("The map could not start.")).toBeNull();
@@ -692,7 +809,7 @@ describe("MapView", () => {
   it("drops a lost renderer's notice once a later map is created", async () => {
     const first = render(<MapView factory={async () => fake.port} draw={async () => img} pixelRatio={1} />);
     await flush();
-    fake.fire("load");
+    fake.fire("ready");
     fake.fire("webglcontextlost");
     expect(screen.getByText("The map renderer was lost.")).toBeTruthy();
     first.unmount();
@@ -705,7 +822,7 @@ describe("MapView", () => {
     await mount();
     fake.fire("error", BASEMAP_SOURCE, "network error");
     expect(store().getState().tileError).toBe(true);
-    // Our own sources loading right after "load" must not clear a genuine
+    // Our own sources loading right after "ready" must not clear a genuine
     // basemap failure.
     fake.fire("sourceloaded", PHOTO_SOURCE);
     expect(store().getState().tileError).toBe(true);
@@ -763,5 +880,182 @@ describe("MapView", () => {
     await mount();
     const credit = screen.getByRole("link", { name: ATTRIBUTION[0].label }).parentElement!;
     expect(credit.style.background).toBe("color-mix(in srgb, var(--color-surface-0) 70%, transparent)");
+  });
+
+  it("feeds the cluster counts their own copy of the photos", async () => {
+    await mount();
+    expect(fake.dataOf(PHOTO_COUNT_SOURCE)).toEqual(fake.dataOf(PHOTO_SOURCE));
+    const a = h.catalog.getState().photos.find((p) => p.id === "a")!;
+    await act(async () => {
+      await h.catalog.getState().relocatePhotos([withFix(a, { lat: 7, lon: 8 })]);
+    });
+    expect(fake.calls.setData.map(([id]) => id).sort()).toEqual([PHOTO_COUNT_SOURCE, PHOTO_SOURCE]);
+    expect(fake.dataOf(PHOTO_COUNT_SOURCE)).toEqual(fake.dataOf(PHOTO_SOURCE));
+  });
+
+  it("keeps the map when the pixel ratio changes, and hands it the new ratio", async () => {
+    let created = 0;
+    const factory: MapFactory = async () => {
+      created++;
+      return fake.port;
+    };
+    const draw = async () => img;
+    const { rerender } = render(<MapView factory={factory} draw={draw} pixelRatio={1} />);
+    await flush();
+    fake.fire("ready");
+    rerender(<MapView factory={factory} draw={draw} pixelRatio={2} />);
+    await flush();
+    expect(created).toBe(1);
+    expect(fake.removed()).toBe(false);
+    expect(fake.calls.pixelRatios).toEqual([2]);
+  });
+
+  it("renders at the device pixel ratio times the interface zoom", async () => {
+    const dpr = Object.getOwnPropertyDescriptor(window, "devicePixelRatio");
+    Object.defineProperty(window, "devicePixelRatio", { configurable: true, value: 2 });
+    const width = vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(400);
+    const rect = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({ width: 500, height: 500 } as DOMRect);
+    try {
+      const ratios: number[] = [];
+      render(
+        <MapView
+          factory={async (_el, _style, _center, _zoom, pixelRatio) => {
+            ratios.push(pixelRatio);
+            return fake.port;
+          }}
+          draw={async () => img}
+        />,
+      );
+      await flush();
+      expect(ratios).toEqual([2.5]);
+    } finally {
+      width.mockRestore();
+      rect.mockRestore();
+      if (dpr) Object.defineProperty(window, "devicePixelRatio", dpr);
+      else delete (window as { devicePixelRatio?: number }).devicePixelRatio;
+    }
+  });
+
+  it("reads the interface zoom exactly where the browser reports it, free of layout rounding", async () => {
+    const dpr = Object.getOwnPropertyDescriptor(window, "devicePixelRatio");
+    Object.defineProperty(window, "devicePixelRatio", { configurable: true, value: 2 });
+    Object.defineProperty(HTMLElement.prototype, "currentCSSZoom", { configurable: true, get: () => 1.25 });
+    const width = vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(400);
+    const rect = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({ width: 501, height: 501 } as DOMRect);
+    try {
+      const ratios: number[] = [];
+      render(
+        <MapView
+          factory={async (_el, _style, _center, _zoom, pixelRatio) => {
+            ratios.push(pixelRatio);
+            return fake.port;
+          }}
+          draw={async () => img}
+        />,
+      );
+      await flush();
+      expect(ratios).toEqual([2.5]);
+    } finally {
+      width.mockRestore();
+      rect.mockRestore();
+      delete (HTMLElement.prototype as { currentCSSZoom?: number }).currentCSSZoom;
+      if (dpr) Object.defineProperty(window, "devicePixelRatio", dpr);
+      else delete (window as { devicePixelRatio?: number }).devicePixelRatio;
+    }
+  });
+
+  it("starts a fresh map once a lost renderer comes back", async () => {
+    const first = fakePort();
+    const second = fakePort();
+    let created = 0;
+    render(<MapView factory={async () => (created++ === 0 ? first.port : second.port)} draw={async () => img} pixelRatio={1} />);
+    await flush();
+    first.fire("ready");
+    first.fire("webglcontextlost");
+    expect(screen.getByText("The map renderer was lost.")).toBeTruthy();
+    first.fire("webglcontextrestored");
+    await flush();
+    second.fire("ready");
+    await flush();
+    expect(created).toBe(2);
+    expect(first.removed()).toBe(true);
+    expect(screen.queryByText("The map renderer was lost.")).toBeNull();
+    expect(second.calls.layers).toContain(LAYER_PINS);
+  });
+
+  describe("the basic map", () => {
+    it("says it is the basic map, and offers the full map again", async () => {
+      const basic = fakePort("basic");
+      let created = 0;
+      render(<MapView factory={async () => (created++ === 0 ? basic.port : fake.port)} draw={async () => img} pixelRatio={1} />);
+      await flush();
+      basic.fire("ready");
+      expect(screen.getByRole("note").textContent).toContain("Basic map");
+      fireEvent.click(within(screen.getByRole("note")).getByRole("button", { name: "Try full map" }));
+      await flush();
+      fake.fire("ready");
+      expect(created).toBe(2);
+      expect(basic.removed()).toBe(true);
+      expect(screen.queryByRole("note")).toBeNull();
+    });
+
+    it("drops a tile notice left by an earlier full map", async () => {
+      store().getState().setTileError(true);
+      fake = fakePort("basic");
+      await mount();
+      expect(store().getState().tileError).toBe(false);
+      expect(screen.queryByRole("status")).toBeNull();
+    });
+
+    it("credits Natural Earth instead of the tile sources", async () => {
+      fake = fakePort("basic");
+      await mount();
+      for (const { label, href } of LAND_ATTRIBUTION) expect(screen.getByRole("link", { name: label }).getAttribute("href")).toBe(href);
+      expect(screen.queryByRole("link", { name: ATTRIBUTION[0].label })).toBeNull();
+    });
+
+    it("never waits on a basemap it does not have", async () => {
+      vi.useFakeTimers();
+      try {
+        fake = fakePort("basic");
+        await mount();
+        act(() => void vi.advanceTimersByTime(60_000));
+        expect(store().getState().tileError).toBe(false);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
+
+  describe("a basemap that never answers", () => {
+    beforeEach(() => void vi.useFakeTimers());
+    afterEach(() => void vi.useRealTimers());
+
+    it("raises the tile notice when the basemap still hasn't loaded 15 s after the map is ready", async () => {
+      await mount();
+      act(() => void vi.advanceTimersByTime(14_999));
+      expect(store().getState().tileError).toBe(false);
+      act(() => void vi.advanceTimersByTime(1));
+      expect(store().getState().tileError).toBe(true);
+      expect(screen.getByRole("status").textContent).toBe("Map tiles unavailable — offline?");
+      fake.fire("sourceloaded", BASEMAP_SOURCE);
+      expect(store().getState().tileError).toBe(false);
+    });
+
+    it("stays quiet once the basemap has loaded", async () => {
+      await mount();
+      fake.fire("sourceloaded", BASEMAP_SOURCE);
+      act(() => void vi.advanceTimersByTime(60_000));
+      expect(store().getState().tileError).toBe(false);
+    });
+
+    it("stops waiting when the map goes away", async () => {
+      const { unmount } = render(<MapView factory={async () => fake.port} draw={async () => img} pixelRatio={1} />);
+      await flush();
+      fake.fire("ready");
+      unmount();
+      act(() => void vi.advanceTimersByTime(60_000));
+      expect(store().getState().tileError).toBe(false);
+    });
   });
 });

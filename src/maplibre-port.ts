@@ -14,6 +14,15 @@
 // which would otherwise swallow every Shift+click (range-select). The keyboard
 // handler is off so arrow and rating keys keep their Safelight meaning (core's
 // culling shortcuts) instead of also panning the map.
+//
+// "ready" is MapLibre's first "style.load", not its "load": "load" waits until
+// every visible basemap tile has arrived or failed, which on a slow or
+// filtered connection can take minutes, and the photos must not wait for it.
+//
+// A lost WebGL context makes MapLibre destroy its style until the context
+// comes back, and every call that reaches the style would then throw. The
+// view replaces the map on "webglcontextrestored", so from the loss on this
+// port stays inert: writes do nothing and reads answer as an empty map.
 
 import type { FilterSpecification, GeoJSONSource, LayerSpecification, SourceSpecification, StyleSpecification } from "maplibre-gl";
 import type { GeoJSON, Point } from "geojson";
@@ -21,13 +30,14 @@ import { boundsFromMap } from "./geo";
 import { keepPhotoLayers } from "./map-layers";
 import type { MapFactory, MapPort, RenderedHit } from "./map-port";
 
-export const maplibreFactory: MapFactory = async (container, style, center, zoom) => {
+export const maplibreFactory: MapFactory = async (container, style, center, zoom, pixelRatio) => {
   const maplibregl = await import("maplibre-gl");
   const map = new maplibregl.Map({
     container,
     style: style as unknown as StyleSpecification,
     center: [center.lon, center.lat],
     zoom,
+    pixelRatio,
     attributionControl: false,
     maplibreLogo: false,
     doubleClickZoom: false,
@@ -42,8 +52,27 @@ export const maplibreFactory: MapFactory = async (container, style, center, zoom
   map.touchZoomRotate.disableRotation();
   const geojson = (id: string) => map.getSource(id) as GeoJSONSource | undefined;
 
+  let ready = false;
+  const waiting: (() => void)[] = [];
+  map.once("style.load", () => {
+    ready = true;
+    for (const handler of waiting.splice(0)) handler();
+  });
+  let lost = false;
+  map.on("webglcontextlost", () => {
+    lost = true;
+  });
+  const live = (write: () => void) => {
+    if (!lost) write();
+  };
+
   const port: MapPort = {
-    on: (event, handler) => void map.on(event, () => handler()),
+    kind: "full",
+    on: (event, handler) => {
+      if (event !== "ready") return void map.on(event, () => handler());
+      if (ready) handler();
+      else waiting.push(handler);
+    },
     // A source-originated error bubbles up through Style → Map with a
     // sourceId merged onto the event (MapLibre's Evented forwards a
     // TileManager's own events to its parent with { isSourceLoaded, source,
@@ -59,24 +88,31 @@ export const maplibreFactory: MapFactory = async (container, style, center, zoom
         if (e.isSourceLoaded) handler(e.sourceId);
       }),
     onImageMissing: (handler) => void map.on("styleimagemissing", (e) => handler(e.id)),
-    addSource: (id, spec) => void map.addSource(id, spec as SourceSpecification),
-    removeSource: (id) => {
-      if (map.getSource(id)) map.removeSource(id);
-    },
-    addLayer: (spec) => void map.addLayer(spec as LayerSpecification),
-    removeLayer: (id) => {
-      if (map.getLayer(id)) map.removeLayer(id);
-    },
-    setFilter: (id, filter) => void map.setFilter(id, filter as FilterSpecification),
-    setData: (id, data) => geojson(id)?.setData(data as GeoJSON),
-    clusterExpansionZoom: (id, clusterId) => geojson(id)?.getClusterExpansionZoom(clusterId) ?? Promise.resolve(map.getZoom()),
-    hasImage: (id) => map.hasImage(id),
-    addImage: (id, image, pixelRatio) => void map.addImage(id, image, { pixelRatio }),
-    updateImage: (id, image) => void map.updateImage(id, image),
-    setStyle: (next) =>
-      void map.setStyle(next as unknown as StyleSpecification, {
-        transformStyle: (prev, nextStyle) => keepPhotoLayers(prev, nextStyle),
+    addSource: (id, spec) => live(() => map.addSource(id, spec as SourceSpecification)),
+    removeSource: (id) =>
+      live(() => {
+        if (map.getSource(id)) map.removeSource(id);
       }),
+    addLayer: (spec) => live(() => map.addLayer(spec as LayerSpecification)),
+    removeLayer: (id) =>
+      live(() => {
+        if (map.getLayer(id)) map.removeLayer(id);
+      }),
+    setFilter: (id, filter) => live(() => map.setFilter(id, filter as FilterSpecification)),
+    setData: (id, data) => live(() => geojson(id)?.setData(data as GeoJSON)),
+    clusterExpansionZoom: (id, clusterId) =>
+      lost
+        ? Promise.reject(new Error("the map renderer was lost"))
+        : (geojson(id)?.getClusterExpansionZoom(clusterId) ?? Promise.resolve(map.getZoom())),
+    hasImage: (id) => !lost && map.hasImage(id),
+    addImage: (id, image, ratio) => live(() => map.addImage(id, image, { pixelRatio: ratio })),
+    updateImage: (id, image) => live(() => map.updateImage(id, image)),
+    setStyle: (next) =>
+      live(() =>
+        map.setStyle(next as unknown as StyleSpecification, {
+          transformStyle: (prev, nextStyle) => keepPhotoLayers(prev, nextStyle),
+        }),
+      ),
     easeTo: (c, z, duration) => void map.easeTo({ center: [c.lon, c.lat], ...(z === null ? {} : { zoom: z }), duration }),
     fitBounds: (b, padding, maxZoom) =>
       void map.fitBounds(
@@ -100,20 +136,23 @@ export const maplibreFactory: MapFactory = async (container, style, center, zoom
       return { lon: l.lng, lat: l.lat };
     },
     hitTest: (x, y, layers) =>
-      map.queryRenderedFeatures([x, y], { layers: [...layers] }).map((f): RenderedHit => {
-        const [lon, lat] = (f.geometry as Point).coordinates;
-        const props = (f.properties ?? {}) as Record<string, unknown>;
-        return {
-          layer: f.layer.id,
-          id: typeof props.id === "string" ? props.id : null,
-          clusterId: typeof props.cluster_id === "number" ? props.cluster_id : null,
-          lon,
-          lat,
-        };
-      }),
+      lost
+        ? []
+        : map.queryRenderedFeatures([x, y], { layers: [...layers] }).map((f): RenderedHit => {
+            const [lon, lat] = (f.geometry as Point).coordinates;
+            const props = (f.properties ?? {}) as Record<string, unknown>;
+            return {
+              layer: f.layer.id,
+              id: typeof props.id === "string" ? props.id : null,
+              clusterId: typeof props.cluster_id === "number" ? props.cluster_id : null,
+              lon,
+              lat,
+            };
+          }),
     setCursor: (cursor) => {
       map.getCanvas().style.cursor = cursor;
     },
+    setPixelRatio: (ratio) => live(() => map.setPixelRatio(ratio)),
     remove: () => map.remove(),
   };
   return port;

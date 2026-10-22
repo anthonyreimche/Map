@@ -25,7 +25,7 @@ afterEach(() => {
 describe("Toolbar", () => {
   it("fits to photos through the map's commands", () => {
     const fitToPhotos = vi.fn();
-    store().getState().setCommands({ fitToPhotos, fitToTrack: vi.fn(), focus: vi.fn() });
+    store().getState().setCommands({ fitToPhotos, fitToOverlay: vi.fn(), focus: vi.fn() });
     render(<Toolbar />);
     fireEvent.click(screen.getByRole("button", { name: "Fit to photos" }));
     expect(fitToPhotos).toHaveBeenCalledTimes(1);
@@ -90,6 +90,48 @@ describe("Toolbar", () => {
     window.history.replaceState({}, "", "/?detached=map");
     render(<Toolbar />);
     expect(screen.queryByLabelText("Filter Library to map view")).toBeNull();
+  });
+
+  it("shows no Overlays button without overlays", () => {
+    render(<Toolbar />);
+    expect(screen.queryByRole("button", { name: "Overlays" })).toBeNull();
+  });
+
+  it("lists overlays and fits the map to the one picked", () => {
+    const fitToOverlay = vi.fn();
+    store().getState().setCommands({ fitToPhotos: vi.fn(), fitToOverlay, focus: vi.fn() });
+    store().getState().setOverlays([
+      { key: "gps-track", label: "ride.gpx", lines: [], points: [], bounds: null },
+      { key: "trips", label: "Lisbon trip", lines: [], points: [], bounds: null },
+    ]);
+    render(<Toolbar />);
+    fireEvent.click(screen.getByRole("button", { name: "Overlays" }));
+    expect(screen.getByRole("menu")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Lisbon trip" }));
+    expect(fitToOverlay).toHaveBeenCalledWith("trips");
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
+
+  // An empty label is valid (the label only has to be a string), but a blank
+  // menu item can't be told apart or picked, so the key stands in for it.
+  it("shows an overlay's key when its label is empty", () => {
+    store().getState().setOverlays([{ key: "trips", label: "", lines: [], points: [], bounds: null }]);
+    render(<Toolbar />);
+    fireEvent.click(screen.getByRole("button", { name: "Overlays" }));
+    const item = screen.getByRole("button", { name: "trips" });
+    expect(item.textContent).toBe("trips");
+    expect(item.title).toBe("Fit the map to trips");
+  });
+
+  it("closes the menu on Escape and on a click elsewhere", () => {
+    store().getState().setOverlays([{ key: "k", label: "x", lines: [], points: [], bounds: null }]);
+    render(<Toolbar />);
+    fireEvent.click(screen.getByRole("button", { name: "Overlays" }));
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByRole("menu")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Overlays" }));
+    fireEvent.pointerDown(document.body);
+    expect(screen.queryByRole("menu")).toBeNull();
   });
 });
 

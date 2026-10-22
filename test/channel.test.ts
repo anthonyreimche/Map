@@ -29,6 +29,21 @@ describe("broadcastChannelFactory", () => {
     expect(() => unsubscribe()).not.toThrow();
     expect(() => ch.close()).not.toThrow();
   });
+
+  it("is a no-op transport when BroadcastChannel refuses to open", () => {
+    vi.stubGlobal(
+      "BroadcastChannel",
+      class {
+        constructor() {
+          throw new DOMException("The operation is insecure.", "SecurityError");
+        }
+      },
+    );
+    const ch = broadcastChannelFactory();
+    expect(() => ch.subscribe(() => {})()).not.toThrow();
+    expect(() => ch.post(["a"])).not.toThrow();
+    expect(() => ch.close()).not.toThrow();
+  });
 });
 
 describe("parseFocusIds", () => {

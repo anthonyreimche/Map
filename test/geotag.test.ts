@@ -9,7 +9,6 @@ import {
   placeLabel,
   removeLabel,
   removeLocation,
-  trackLabel,
   withFix,
   withoutFix,
 } from "../src/geotag";
@@ -95,7 +94,7 @@ describe("applyPlacements / applyUndo", () => {
         { id: "a", fix: { lat: 1, lon: 2, alt: 3 } },
         { id: "b", fix: { lat: 4, lon: 5 } },
       ],
-      trackLabel(2),
+      "Undo tagging 2 photos",
       d.deps,
     );
     expect(d.current().map((p) => p.exif.gpsAltitude)).toEqual([3, undefined]);
@@ -117,6 +116,5 @@ describe("labels", () => {
     expect(placeLabel(1)).toBe("Undo placing 1 photo");
     expect(placeLabel(3)).toBe("Undo placing 3 photos");
     expect(removeLabel(2)).toBe("Undo removing 2 locations");
-    expect(trackLabel(12)).toBe("Undo tagging 12 photos from the track");
   });
 });
