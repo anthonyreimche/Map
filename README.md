@@ -75,7 +75,7 @@ starts afresh once it is back; **Reload map** retries at any time.
 ## Drawing on the map
 
 Map reads the shared variable `map.overlays` (core's `api.variables`, Safelight
-3.2.0 or later). It is an object with one entry per extension, keyed by that
+3.0.1 or later). It is an object with one entry per extension, keyed by that
 extension's id:
 
 ```ts
@@ -113,7 +113,7 @@ Install from the SafeLight **Extensions** window and restart when asked:
 SafeLight only allows the declared network origin after a restart, and until
 then the map shows pins over a blank basemap. Build from source with
 `npm install --legacy-peer-deps && npm run build` (outputs `dist/index.js`).
-Needs SafeLight 3.2.0 or later.
+Needs SafeLight 3.0.1 or later.
 
 Loading this folder through Developer Tools ▸ Extensions works the same way:
 SafeLight reads the declared origin from the folder when it starts, so restart

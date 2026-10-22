@@ -8,7 +8,7 @@
   "license": "MIT",
   "categories": ["Modules"],
   "keywords": ["map", "gps", "geotag", "geolocation", "location", "module"],
-  "minAppVersion": "3.2.0",
+  "minAppVersion": "3.0.1",
   "repository": "anthonyreimche/Map",
   "permissions": {
     "network": ["https://tiles.openfreemap.org"],
