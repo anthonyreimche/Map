@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 // Not `new URL("../dist/index.js", import.meta.url)`: Vite statically
-// recognises that exact literal pattern as an asset-URL import and rewrites it
+// recognizes that exact literal pattern as an asset-URL import and rewrites it
 // against the test environment's mocked http://localhost location instead of
 // the real file, which fails every check below with "must be of scheme file".
 const BUNDLE = join(dirname(fileURLToPath(import.meta.url)), "..", "dist", "index.js");

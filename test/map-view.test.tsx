@@ -868,7 +868,7 @@ describe("MapView", () => {
     for (const { label, href } of ATTRIBUTION) {
       const link = screen.getByRole("link", { name: label }) as HTMLAnchorElement;
       // The attribute, not the `.href` IDL property: the latter is
-      // URL-normalised (a bare-domain href reads back with a trailing "/").
+      // URL-normalized (a bare-domain href reads back with a trailing "/").
       expect(link.getAttribute("href")).toBe(href);
       expect(link.target).toBe("_blank");
       expect(link.rel).toBe("noreferrer");

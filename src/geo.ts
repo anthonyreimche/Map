@@ -66,7 +66,7 @@ export function wrapLon(lon: number): number {
   return ((((lon + 180) % 360) + 360) % 360) - 180;
 }
 
-/** Normalise the box a map reports (longitudes run past ±180 as it wraps). */
+/** Normalize the box a map reports (longitudes run past ±180 as it wraps). */
 export function boundsFromMap(west: number, south: number, east: number, north: number): Bounds {
   const clampLat = (v: number) => Math.max(-90, Math.min(90, v));
   if (east - west >= 360) return { west: -180, south: clampLat(south), east: 180, north: clampLat(north) };

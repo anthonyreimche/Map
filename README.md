@@ -162,7 +162,7 @@ recording 2D context. MapLibre's own rendering is verified in the app.
   (`attributionControl: false` in `maplibre-port.ts`) — the map's credit is
   rendered as plain React text instead (`MapView.tsx`).
 
-## License
+## Licence
 
 MIT. No code from darktable, digiKam or Lightroom is involved; MapLibre GL is
 BSD-3, OpenFreeMap's tiles carry the OpenStreetMap ODbL attribution shown in

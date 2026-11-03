@@ -7,7 +7,7 @@ import { DEFAULT_ORIGIN, FONT_BOLD, FONT_REGULAR, OMT_LAYERS, basemapColours, bu
 import type { StyleLayer } from "../src/style";
 
 // Not `new URL("../safelight.json", import.meta.url)`: Vite statically
-// recognises that exact literal pattern as an asset-URL import and rewrites it
+// recognizes that exact literal pattern as an asset-URL import and rewrites it
 // against the test environment's mocked http://localhost location instead of
 // the real file, which fails readFileSync with "must be of scheme file".
 const MANIFEST = join(dirname(fileURLToPath(import.meta.url)), "..", "safelight.json");
