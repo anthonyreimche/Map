@@ -485,8 +485,8 @@ describe("MapView", () => {
 
     fake.fire("moveend");
     // The harness's useVisiblePhotos (like the real host's, which re-derives
-    // whenever a grid filter re-registers or the catalog changes) returns a
-    // fresh array on every render — an unrelated catalog change (a rating on
+    // whenever a grid filter re-registers or the catalogue changes) returns a
+    // fresh array on every render — an unrelated catalogue change (a rating on
     // a different, unselected photo) forces exactly that re-render here.
     // Neither the fly-to-active effect nor the feature upload may react to
     // `byId`/`located` merely getting a new identity.
@@ -534,7 +534,7 @@ describe("MapView", () => {
     fireEvent.pointerDown(canvas, { clientX: 10, clientY: 10 });
     fireEvent.click(canvas, { clientX: 10, clientY: 10, shiftKey: true });
     expect(fake.calls.easeTo.length).toBe(0);
-    // An unrelated catalog change (rating a different photo) forces a
+    // An unrelated catalogue change (rating a different photo) forces a
     // re-render with fresh byId/located identities; must not fly either.
     await act(async () => {
       await h.catalog.getState().setRating("b", 3);

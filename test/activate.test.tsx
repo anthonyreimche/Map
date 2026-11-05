@@ -79,7 +79,7 @@ describe("activate", () => {
     expect(store().getState().pendingFocus).toEqual(["a"]);
   });
 
-  it("offers Set location for any photos, and hosts its dialog in the Library and Develop toolbars", () => {
+  it("offers Set location for any photos, and hosts its dialogue in the Library and Develop toolbars", () => {
     const set = h.menuItems.find((i) => i.id === MENU_SET)!;
     expect(set.enabled?.(["b"]) ?? true).toBe(true);
     expect(labelOf(set, ["a"])).toBe("Set location…");

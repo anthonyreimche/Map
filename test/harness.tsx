@@ -174,7 +174,7 @@ export function createHarness(opts: { photos?: CatalogPhoto[]; variables?: FakeV
   };
   const listeners = new Set<(key: string, value: unknown) => void>();
 
-  // select, toggleSelect and selectRange follow core's catalog store
+  // select, toggleSelect and selectRange follow core's catalogue store
   // (src/state/catalog-store.ts), minus its cross-window broadcasts.
   const catalog = create<CatalogState>((set, get) => ({
     photos: opts.photos ?? [],

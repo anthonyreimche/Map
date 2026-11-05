@@ -13,7 +13,7 @@ export interface UndoEntry {
   previous: Map<string, GpsFix | null>;
 }
 
-/** An open Set location dialog. */
+/** An open Set location dialogue. */
 export interface LocationRequest {
   /** The photos the location goes to. */
   ids: string[];

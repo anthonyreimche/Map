@@ -58,7 +58,7 @@ export interface CatalogState {
   selectRange(id: string, orderedIds?: string[]): void;
   setActivePhoto(id: string | null, options?: { broadcast?: boolean }): void;
   setRating(id: string, rating: number): Promise<void>;
-  /** Persists the records and updates this window's catalog. Other windows get
+  /** Persists the records and updates this window's catalogue. Other windows get
    *  a change notice without the records, so they keep their own copies, and
    *  a later save from one of them can write those back over this change. */
   relocatePhotos(updated: CatalogPhoto[]): Promise<void>;

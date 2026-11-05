@@ -109,17 +109,17 @@ describe("Set location", () => {
     expect(h.relocated).toEqual([]);
   });
 
-  it("keeps the dialog open with the reason when the write fails", async () => {
+  it("keeps the dialogue open with the reason when the write fails", async () => {
     h.catalog.setState({
       relocatePhotos: async () => {
-        throw new Error("The catalog is read-only.");
+        throw new Error("The catalogue is read-only.");
       },
     });
     render(<LocationDialogHost />);
     ask({ ids: ["b"], initial: { lat: 1, lon: 2 } });
     fireEvent.click(screen.getByRole("button", { name: "Set location" }));
     await flush();
-    expect(screen.getByText("The catalog is read-only.")).toBeTruthy();
+    expect(screen.getByText("The catalogue is read-only.")).toBeTruthy();
     expect(screen.getByRole("dialog")).toBeTruthy();
     expect(store().getState().undo).toEqual([]);
   });

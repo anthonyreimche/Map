@@ -33,14 +33,14 @@ draw on it.
 - **Filter Library to map view** narrows the grid and the filmstrip to the
   photos inside the current map view. *Clear filters* in the Library turns it
   off. Library filters are per window: popped out (⧉) into its own window,
-  the Map shows that window's photo set — the whole catalog, by default — and
+  the Map shows that window's photo set — the whole catalogue, by default — and
   hides this toggle; it works when the Map is in the main window.
-  Until Safelight syncs catalog edits between windows, geotag in the main
+  Until Safelight syncs catalogue edits between windows, geotag in the main
   window with nothing popped out: each window saves its own copy of the
-  catalog, so a location placed in one window can be overwritten when another
+  catalogue, so a location placed in one window can be overwritten when another
   window later saves.
 
-Locations are written to the catalog record (the same field Export's EXIF
+Locations are written to the catalogue record (the same field Export's EXIF
 embedding and the EXIF/XMP extensions read); original files are never
 modified.
 
@@ -124,7 +124,7 @@ once after choosing the folder (the Dev tab says so) before tiles load.
 `npm run check` typechecks, builds and runs the vitest suite (jsdom): geo
 maths, the `map.overlays` checks and fit-on-arrival, the palette and style
 generators, preferences, geotag writes and undo, the pin rasteriser's
-scheduling, coordinate parsing and the Set location dialog, the view, toolbar
+scheduling, coordinate parsing and the Set location dialogue, the view, toolbar
 and strip against a fake map port and a host stand-in, the
 MapLibre port against a stand-in for MapLibre's `Map`, and the basic map
 (projection, clustering, style expressions, input, drawing) against a
@@ -149,7 +149,7 @@ recording 2D context. MapLibre's own rendering is verified in the app.
 - Set location is a native `<dialog>` (top layer, above every panel). Core's
   global shortcuts stand down for keys inside an open `<dialog>`
   (`inNativeDialog` in core's keybindings store); on a core without that,
-  Escape in the dialog can also leave a Develop tool behind it.
+  Escape in the dialogue can also leave a Develop tool behind it.
 - `src/land-110m.ts` is generated from Natural Earth's 1:110m land polygons
   (v5.1.2, public domain) by `node scripts/build-land.mjs
   ne_110m_land.geojson`; the script names the source file.

@@ -72,7 +72,7 @@ const errorText = (e: unknown): string => (e instanceof Error ? e.message : Stri
 
 // The photo features by content: `located` gets a new identity whenever the
 // host re-derives the visible photos (a grid-filter re-registration, any
-// catalog update), whether or not any location changed.
+// catalogue update), whether or not any location changed.
 const locationSignature = (photos: readonly CatalogPhoto[]): string =>
   photos.map((p) => `${p.id}@${locationOf(p)?.lon},${locationOf(p)?.lat}`).join("|");
 

@@ -3,7 +3,7 @@ export interface LonLat {
   lat: number;
 }
 
-/** A photo's position: what the catalog's exif gps fields hold. */
+/** A photo's position: what the catalogue's exif gps fields hold. */
 export interface GpsFix {
   lat: number;
   lon: number;
