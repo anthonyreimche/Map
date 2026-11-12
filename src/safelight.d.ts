@@ -140,6 +140,9 @@ export interface KeyActionContribution {
 export interface GridFilterContribution {
   id: string;
   test(photo: CatalogPhoto): boolean;
+  /** The photo fields `test` reads, by top-level name; the Library filters
+   *  again only when one changes. `[]` for a test that reads none. */
+  reads?: readonly (keyof CatalogPhoto)[];
   onClear?(): void;
 }
 

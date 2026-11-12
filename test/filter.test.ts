@@ -37,6 +37,20 @@ describe("syncInViewFilter", () => {
     expect(f.test(located("out", 50, 5))).toBe(false);
   });
 
+  // The Library filters again only for the fields a filter says it reads.
+  it("says it reads a photo's EXIF while it filters, and nothing while it passes every photo", () => {
+    syncInViewFilter();
+    expect(h.gridFilters.get(FILTER_ID)!.reads).toEqual([]);
+
+    store().getState().setFilterToView(true);
+    syncInViewFilter();
+    expect(h.gridFilters.get(FILTER_ID)!.reads).toEqual([]);
+
+    store().getState().setBounds(box);
+    syncInViewFilter();
+    expect(h.gridFilters.get(FILTER_ID)!.reads).toEqual(["exif"]);
+  });
+
   it("re-registers as a pass-through when the toggle is off", () => {
     store().getState().setBounds(box);
     syncInViewFilter();

@@ -1,7 +1,7 @@
 {
   "id": "map",
   "name": "Map",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "A Map module beside Library and Develop: your geotagged photos as thumbnail pins on a basemap that follows the app theme, drag-to-geotag, a filter that narrows the Library to the map view, and overlays other extensions draw (GPX tracks with GPS Track).",
   "author": "Anthony Reimche",
   "main": "dist/index.js",
