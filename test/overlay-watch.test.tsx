@@ -67,14 +67,14 @@ describe("map.overlays", () => {
   });
 
   it("keeps no pending fit in another module's pop-out", () => {
-    window.history.replaceState({}, "", "?detached=develop");
+    h.own.module = "develop";
     add("gps-track", track("ride.gpx", [[1, 1], [2, 2]]));
     expect(store().getState().overlays).toHaveLength(1);
     expect(store().getState().pendingFit).toBeNull();
   });
 
   it("keeps the pending fit in the Map's own pop-out", () => {
-    window.history.replaceState({}, "", "?detached=map");
+    h.own.module = "map";
     add("gps-track", track("ride.gpx", [[1, 1], [2, 2]]));
     expect(store().getState().pendingFit).toBe("gps-track");
   });

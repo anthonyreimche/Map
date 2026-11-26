@@ -11,6 +11,7 @@ import { LAND_110M } from "./land-110m";
 import type { MapEvent, MapFactory, MapPort, RenderedHit } from "./map-port";
 import { MAX_ZOOM, MIN_ZOOM, constrain, fitCamera, fromUnit, toUnit, unitAt, worldSize, type Camera, type Unit } from "./mercator";
 import type { PinImage } from "./pins";
+import { api } from "./rt";
 import { basemapColours, type BasemapColours, type StyleLayer } from "./style";
 import { evaluate, passes, type Properties } from "./style-eval";
 
@@ -539,13 +540,7 @@ function openBasicMap(
     return hits;
   };
 
-  // Pointer positions in layout px: under Safelight's CSS zoom, clientX and
-  // the canvas's rect are scaled while its offsetWidth is not.
-  const local = (e: { clientX: number; clientY: number }) => {
-    const r = canvas.getBoundingClientRect();
-    const scale = canvas.offsetWidth ? r.width / canvas.offsetWidth || 1 : 1;
-    return { x: (e.clientX - r.left) / scale, y: (e.clientY - r.top) / scale };
-  };
+  const local = (e: { clientX: number; clientY: number }) => api.develop.framePoint(canvas, e.clientX, e.clientY);
 
   const onPointerDown = (e: PointerEvent) => {
     if (e.button !== 0 || !e.isPrimary) return;

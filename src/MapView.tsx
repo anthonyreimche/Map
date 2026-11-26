@@ -4,7 +4,7 @@
 // preference reactions, and the notices. Pointer hit-testing goes through the
 // frame's own React events + hitTest so a fake port can stand in.
 
-import type { DragEvent as ReactDragEvent, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, ReactNode } from "react";
+import type { DragEvent as ReactDragEvent, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react";
 import { DND_PHOTOS, readDroppedIds } from "./dnd";
 import { exifTime } from "./exif-time";
 import { FILTER_ID, syncInViewFilter } from "./filter";
@@ -55,7 +55,6 @@ const FIT_MAX_ZOOM = 16;
 const CLICK_SLOP = 4;
 const SAVE_VIEW_DELAY = 500;
 const EASE_MS = 600;
-const MENU_MARGIN = 4;
 /** How long the basemap may stay silent before the tile notice goes up: a
  *  filtered host can hold requests open for minutes without an error. */
 const TILE_PATIENCE_MS = 15_000;
@@ -125,68 +124,6 @@ function setPhotoData(m: MapPort, located: readonly CatalogPhoto[]): void {
 function fitTo(m: MapPort, photos: readonly CatalogPhoto[]): void {
   const b = boundsOf(photos.map((p) => locationOf(p)!));
   if (b) m.fitBounds(b, FIT_PADDING, FIT_MAX_ZOOM);
-}
-
-interface MapMenuProps {
-  x: number;
-  y: number;
-  onClose: () => void;
-  children: ReactNode;
-}
-
-/** The map's own right-click menu, kept inside the box it is positioned in.
- *  Closes on Escape and whenever another context menu opens. */
-function MapMenu({ x, y, onClose, children }: MapMenuProps) {
-  const ref = React.useRef<HTMLDivElement | null>(null);
-  const [pos, setPos] = React.useState({ x, y });
-
-  React.useLayoutEffect(() => {
-    const el = ref.current;
-    const box = el?.offsetParent;
-    setPos(
-      el && box
-        ? {
-            x: Math.max(0, Math.min(x, box.clientWidth - el.offsetWidth - MENU_MARGIN)),
-            y: Math.max(0, Math.min(y, box.clientHeight - el.offsetHeight - MENU_MARGIN)),
-          }
-        : { x, y },
-    );
-  }, [x, y]);
-
-  React.useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    // Capture phase: runs before the handler that opens the next menu.
-    window.addEventListener("contextmenu", onClose, true);
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("contextmenu", onClose, true);
-    };
-  }, [onClose]);
-
-  return (
-    <div
-      ref={ref}
-      role="menu"
-      style={{
-        position: "absolute",
-        left: pos.x,
-        top: pos.y,
-        display: "flex",
-        flexDirection: "column",
-        gap: 2,
-        padding: 4,
-        borderRadius: 4,
-        background: ui.tokens.surface1,
-        border: `1px solid ${ui.tokens.border}`,
-        zIndex: 2,
-      }}
-    >
-      {children}
-    </div>
-  );
 }
 
 export function MapView({ factory = defaultFactory, draw = drawPinFromUrl, pixelRatio }: MapViewProps) {
@@ -519,18 +456,9 @@ export function MapView({ factory = defaultFactory, draw = drawPinFromUrl, pixel
     }
   }, [map, loaded]);
 
-  // Safelight scales its UI with a CSS `zoom`, under which clientX/Y are in
-  // scaled pixels while the map's canvas works in layout pixels. Divide by
-  // the frame's own scale factor, the way MapLibre's DOM.mousePos does, so
-  // every consumer (hit tests, unproject, tooltip/menu placement) stays in
-  // layout pixels regardless of the zoom level.
   const localPoint = (e: { clientX: number; clientY: number }) => {
     const el = frameRef.current;
-    const r = el?.getBoundingClientRect();
-    if (!el || !r) return { x: e.clientX, y: e.clientY };
-    const scaleX = r.width / el.offsetWidth || 1;
-    const scaleY = r.height / el.offsetHeight || 1;
-    return { x: (e.clientX - r.left) / scaleX, y: (e.clientY - r.top) / scaleY };
+    return el ? api.develop.framePoint(el, e.clientX, e.clientY) : { x: e.clientX, y: e.clientY };
   };
 
   // True only when the event's target is the map canvas area itself, not one
@@ -593,12 +521,13 @@ export function MapView({ factory = defaultFactory, draw = drawPinFromUrl, pixel
     const pt = localPoint(e);
     const pin = map.hitTest(pt.x, pt.y, [LAYER_PINS])[0];
     if (pin?.id) {
+      setMenu(null);
       onContextMenu(pin.id, e);
       markActiveHandled();
       return;
     }
     e.preventDefault();
-    setMenu({ x: pt.x, y: pt.y, loc: lonLatAt(map, pt) });
+    setMenu({ x: e.clientX, y: e.clientY, loc: lonLatAt(map, pt) });
   };
 
   const onMouseMove = (e: ReactMouseEvent) => {
@@ -633,7 +562,6 @@ export function MapView({ factory = defaultFactory, draw = drawPinFromUrl, pixel
 
   const placeSelectedAt = (loc: LonLat) => {
     const ids = [...catalog.getState().selectedIds];
-    setMenu(null);
     void place(ids, { lat: loc.lat, lon: loc.lon }, catalogDeps()).catch((err: unknown) => store().getState().setError(errorText(err)));
   };
 
@@ -645,6 +573,7 @@ export function MapView({ factory = defaultFactory, draw = drawPinFromUrl, pixel
 
   const selectedCount = selectedIds.size;
   const { Button } = ui;
+  const { ContextMenu } = api.components;
   const basic = map?.kind === "basic";
   const notice = error ?? (styleFailed ? "Map style failed to load" : tileError && !basic ? "Map tiles unavailable — offline?" : null);
   const fatalNotice = initFailed ? "The map could not start." : rendererLost ? "The map renderer was lost." : null;
@@ -686,32 +615,28 @@ export function MapView({ factory = defaultFactory, draw = drawPinFromUrl, pixel
           </div>
         )}
         {menu && (
-          <MapMenu x={menu.x} y={menu.y} onClose={closeMenu}>
-            <Button size="sm" variant="ghost" disabled={selectedCount === 0} onClick={() => placeSelectedAt(menu.loc)}>
-              {selectedCount === 0 ? "Place selected photos here" : `Place ${selectedCount} selected ${selectedCount === 1 ? "photo" : "photos"} here`}
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              disabled={selectedCount === 0}
-              onClick={() => {
-                setMenu(null);
-                store().getState().setLocationRequest({ ids: [...catalog.getState().selectedIds], initial: menu.loc });
-              }}
-            >
-              Set location…
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                setMenu(null);
-                store().getState().commands?.fitToPhotos();
-              }}
-            >
-              Fit to photos
-            </Button>
-          </MapMenu>
+          <ContextMenu
+            x={menu.x}
+            y={menu.y}
+            onClose={closeMenu}
+            items={[
+              {
+                label:
+                  selectedCount === 0
+                    ? "Place selected photos here"
+                    : `Place ${selectedCount} selected ${selectedCount === 1 ? "photo" : "photos"} here`,
+                disabled: selectedCount === 0,
+                onClick: () => placeSelectedAt(menu.loc),
+              },
+              {
+                label: "Set location…",
+                disabled: selectedCount === 0,
+                onClick: () =>
+                  store().getState().setLocationRequest({ ids: [...catalog.getState().selectedIds], initial: menu.loc }),
+              },
+              { label: "Fit to photos", onClick: () => store().getState().commands?.fitToPhotos() },
+            ]}
+          />
         )}
         {basic && (
           <div

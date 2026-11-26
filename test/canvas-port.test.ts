@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createCanvasFactory, type CanvasEnv, type Painter } from "../src/canvas-port";
 import { photoFeatures, type LonLat } from "../src/geo";
 import {
@@ -20,7 +20,8 @@ import { EMPTY_OVERLAY_DATA } from "../src/overlays";
 import { NEUTRAL_TOKENS, palette } from "../src/palette";
 import { pinImageId, type PinImage } from "../src/pins";
 import { buildStyle } from "../src/style";
-import { located } from "./harness";
+import { initRuntime } from "../src/rt";
+import { createHarness, located } from "./harness";
 
 const pal = palette(NEUTRAL_TOKENS);
 const style = buildStyle(pal);
@@ -81,6 +82,7 @@ function sized(el: HTMLElement, width: number, height: number) {
 }
 
 const opened: { el: HTMLElement; port: MapPort }[] = [];
+beforeEach(() => initRuntime(createHarness().api));
 afterEach(() => {
   for (const { el, port } of opened.splice(0)) {
     port.remove();
@@ -249,6 +251,17 @@ describe("the basic map", () => {
     expect(m.port.getCenter().lon).toBeCloseTo(-35.15625, 9);
     expect(movestart).toHaveBeenCalledTimes(1);
     expect(moveend).toHaveBeenCalledTimes(1);
+  });
+
+  it("reads the pointer in the layout px the app reports under its interface scale", async () => {
+    const h = createHarness();
+    initRuntime({ ...h.api, develop: { ...h.api.develop, framePoint: (_el, x, y) => ({ x: x / 2, y: y / 2 }) } });
+    const m = await openMap();
+    m.step();
+    m.canvas.dispatchEvent(pointer("pointerdown", 1024, 512));
+    m.canvas.dispatchEvent(pointer("pointermove", 1124, 512));
+    m.canvas.dispatchEvent(pointer("pointerup", 1124, 512));
+    expect(m.port.getCenter().lon).toBeCloseTo(-17.578125, 9);
   });
 
   it("ends a drag whose release it never saw, instead of panning on hover", async () => {

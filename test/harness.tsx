@@ -4,6 +4,7 @@ import type {
   ButtonProps,
   CatalogPhoto,
   CatalogState,
+  ContextMenuProps,
   FieldProps,
   GridFilterContribution,
   GridMenuItemContribution,
@@ -90,7 +91,7 @@ const Section = ({ title, right, children }: SectionProps) => (
 const Row = ({ children }: RowProps) => <div>{children}</div>;
 const Stack = ({ children }: StackProps) => <div>{children}</div>;
 
-const ui: UiKit = {
+const ui: Omit<UiKit, "onEscape"> = {
   Button,
   Toggle,
   NumberInput,
@@ -129,6 +130,28 @@ const Thumbnail = ({ photo: p, selected, active, onClick, onDoubleClick, onConte
   </div>
 );
 
+const ContextMenu = ({ x, y, items, onClose }: ContextMenuProps) => (
+  <div role="menu" style={{ position: "fixed", left: x, top: y }}>
+    {items.map((item) =>
+      item === "separator" ? (
+        <hr key="separator" />
+      ) : (
+        <button
+          key={item.label}
+          role="menuitem"
+          disabled={item.disabled}
+          onClick={() => {
+            item.onClick();
+            onClose();
+          }}
+        >
+          {item.label}
+        </button>
+      ),
+    )}
+  </div>
+);
+
 export interface Harness {
   api: SafelightAPI;
   modules: ModuleContribution[];
@@ -142,6 +165,10 @@ export interface Harness {
   stylesheets: StylesheetContribution[];
   slots: SlotContribution[];
   navigations: string[];
+  /** The module this window was popped out for, as navigation.ownModule() answers; null in the main window. */
+  own: { module: string | null };
+  /** The handlers api.ui.onEscape holds now, the newest last. */
+  escapes: (() => void)[];
   requested: string[];
   relocated: CatalogPhoto[][];
   values: Map<string, unknown>;
@@ -167,6 +194,8 @@ export function createHarness(opts: { photos?: CatalogPhoto[]; variables?: FakeV
     stylesheets: [] as StylesheetContribution[],
     slots: [] as SlotContribution[],
     navigations: [] as string[],
+    own: { module: null as string | null },
+    escapes: [] as (() => void)[],
     requested: [] as string[],
     relocated: [] as CatalogPhoto[][],
     values: new Map<string, unknown>(),
@@ -244,10 +273,24 @@ export function createHarness(opts: { photos?: CatalogPhoto[]; variables?: FakeV
         return () => listeners.delete(cb);
       },
     },
-    ui,
-    components: { Thumbnail },
+    ui: {
+      ...ui,
+      onEscape: (handler) => {
+        h.escapes.push(handler);
+        return () => void h.escapes.splice(h.escapes.indexOf(handler), 1);
+      },
+    },
+    develop: {
+      framePoint: (el, clientX, clientY) => {
+        const box = el.getBoundingClientRect();
+        const sx = el instanceof HTMLElement && el.offsetWidth ? box.width / el.offsetWidth || 1 : 1;
+        const sy = el instanceof HTMLElement && el.offsetHeight ? box.height / el.offsetHeight || 1 : 1;
+        return { x: (clientX - box.left) / sx, y: (clientY - box.top) / sy };
+      },
+    },
+    components: { Thumbnail, ContextMenu },
     stores: { create, useCatalogStore: catalog, useUIStore: uiStore, useThemeStore: theme },
-    navigation: { goTo: (m) => void h.navigations.push(m) },
+    navigation: { goTo: (m) => void h.navigations.push(m), ownModule: () => h.own.module },
     catalog: {
       useVisiblePhotos: (options) => {
         const photos = catalog((s) => s.photos);

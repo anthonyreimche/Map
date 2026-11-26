@@ -203,10 +203,10 @@ describe("cross-window Show on map", () => {
     const { factory } = createFakeChannel();
     h = createHarness({ photos: [located("a", 1, 1), photo({ id: "b" })] });
     activate(h.api, { channelFactory: factory });
-    window.history.replaceState({}, "", "/?detached=library");
+    h.own.module = "library";
     factory().post(["a"]);
     expect(store().getState().pendingFocus).toBeNull();
-    window.history.replaceState({}, "", originalUrl);
+    h.own.module = null;
     h.api.stores.useUIStore.setState({ detached: new Set([MODULE_ID]) });
     factory().post(["a"]);
     expect(store().getState().pendingFocus).toBeNull();

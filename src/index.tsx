@@ -185,8 +185,8 @@ function mapPoppedOut(host: SafelightAPI): boolean {
 
 // A fit kept in a window where the Map will not mount would replay stale when it is later re-attached there.
 function mapCanMountHere(host: SafelightAPI): boolean {
-  const detached = new URLSearchParams(window.location.search).get("detached");
-  return detached ? detached === MODULE_ID : !mapPoppedOut(host);
+  const own = host.navigation.ownModule();
+  return own ? own === MODULE_ID : !mapPoppedOut(host);
 }
 
 export function deactivate(): void {

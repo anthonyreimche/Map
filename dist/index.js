@@ -316,6 +316,7 @@ function de() {
 	k.registerGridFilter({
 		id: le,
 		test: ue(e.filterToView, e.bounds),
+		reads: e.filterToView && e.bounds ? ["exif"] : [],
 		onClear: () => {
 			P().getState().setFilterToView(!1), de();
 		}
@@ -11877,14 +11878,14 @@ function Tn(e, t, n, r, i, a, o) {
 	}, D = () => {
 		n.width = Math.max(1, Math.round(l.width * c)), n.height = Math.max(1, Math.round(l.height * c)), n.style.width = `${l.width}px`, n.style.height = `${l.height}px`;
 	}, O = () => {
-		v || _ || (v = !0, e.frame(P));
-	}, k = (e) => {
+		v || _ || (v = !0, e.frame(ce));
+	}, A = (e) => {
 		l = Wt(e), O();
-	}, A = () => {
+	}, ee = () => {
 		y && (y = null, E("ease"));
-	}, ee = (e, t) => {
-		if (A(), w("ease"), t <= 0 || gn()) {
-			k(e), E("ease");
+	}, te = (e, t) => {
+		if (ee(), w("ease"), t <= 0 || gn()) {
+			A(e), E("ease");
 			return;
 		}
 		let n = e.center.x - l.center.x, r = {
@@ -11900,7 +11901,7 @@ function Tn(e, t, n, r, i, a, o) {
 			duration: t,
 			start: null
 		}, O();
-	}, te = (e) => {
+	}, j = (e) => {
 		if (!y) return;
 		y.start ??= e;
 		let t = Math.min(1, (e - y.start) / y.duration);
@@ -11921,14 +11922,14 @@ function Tn(e, t, n, r, i, a, o) {
 				y: hn(r.center.y, i.center.y, n)
 			}
 		});
-	}, j = (e, t) => {
+	}, ne = (e, t) => {
 		let n = [];
 		for (let r = Math.floor(-e / t); r <= Math.floor((l.width - e) / t); r++) n.push(e + r * t);
 		return n;
-	}, ne = (e, t, n, r) => {
+	}, M = (e, t, n, r) => {
 		let i = e.source ? u.get(e.source) : void 0;
 		if (!i) return [];
-		let a = j(t, r), o = [];
+		let a = ne(t, r), o = [];
 		for (let t of bn(i, l.zoom)) {
 			let i = n + t.at.y * r;
 			if (i < -64 || i > l.height + cn) continue;
@@ -11944,16 +11945,16 @@ function Tn(e, t, n, r, i, a, o) {
 			}
 		}
 		return o;
-	}, M = (e, t, n) => {
+	}, re = (e, t, n) => {
 		r.beginPath();
-		for (let i of j(e, n)) for (let e of pn) {
+		for (let i of ne(e, n)) for (let e of pn) {
 			if (i + e.maxX * n < 0 || i + e.minX * n > l.width || t + e.maxY * n < 0 || t + e.minY * n > l.height) continue;
 			let a = e.points;
 			r.moveTo(i + a[0] * n, t + a[1] * n);
 			for (let e = 2; e < a.length; e += 2) r.lineTo(i + a[e] * n, t + a[e + 1] * n);
 			r.closePath();
 		}
-	}, re = (e, t, n) => {
+	}, N = (e, t, n) => {
 		let i = ln.reduce((e, t) => t / 360 * n >= un ? t : e, ln[0]), a = Ht(W(l, 0, 0)), o = Ht(W(l, l.width, l.height)), s = Math.min(dn, a.lat), c = Math.max(-80, o.lat), u = t + U({
 			lon: 0,
 			lat: s
@@ -11973,23 +11974,23 @@ function Tn(e, t, n, r, i, a, o) {
 			}).y * n;
 			r.moveTo(0, a), r.lineTo(l.width, a);
 		}
-	}, N = (e, t, n, i) => {
+	}, ie = (e, t, n, i) => {
 		let a = e.source ? u.get(e.source) : void 0;
 		if (!a || a.lines.length === 0) return;
 		let o = e.paint ?? {};
 		r.strokeStyle = xn(G(o["line-color"], {}), "#000000"), r.lineWidth = Sn(G(o["line-width"], {}), 1), r.globalAlpha = Sn(G(o["line-opacity"], {}), 1), r.lineCap = e.layout?.["line-cap"] === "round" ? "round" : "butt", r.lineJoin = e.layout?.["line-join"] === "round" ? "round" : "miter", r.beginPath();
-		for (let e of j(t, i)) for (let t of a.lines) t.forEach((t, a) => a === 0 ? r.moveTo(e + t.x * i, n + t.y * i) : r.lineTo(e + t.x * i, n + t.y * i));
+		for (let e of ne(t, i)) for (let t of a.lines) t.forEach((t, a) => a === 0 ? r.moveTo(e + t.x * i, n + t.y * i) : r.lineTo(e + t.x * i, n + t.y * i));
 		r.stroke(), r.globalAlpha = 1;
-	}, ie = (e, t, n, i) => {
+	}, ae = (e, t, n, i) => {
 		let a = e.paint ?? {};
-		for (let { props: o, x: s, y: c } of ne(e, t, n, i)) {
+		for (let { props: o, x: s, y: c } of M(e, t, n, i)) {
 			r.beginPath(), r.arc(s, c, Sn(G(a["circle-radius"], o), 5), 0, Math.PI * 2), r.fillStyle = xn(G(a["circle-color"], o), "#000000"), r.fill();
 			let e = Sn(G(a["circle-stroke-width"], o), 0);
 			e > 0 && (r.lineWidth = e, r.strokeStyle = xn(G(a["circle-stroke-color"], o), "#000000"), r.stroke());
 		}
-	}, ae = (e, t, n, i, a) => {
+	}, oe = (e, t, n, i, a) => {
 		let o = e.layout ?? {}, s = e.paint ?? {}, c = (Array.isArray(o["text-font"]) ? o["text-font"] : []).some((e) => /bold/i.test(String(e)));
-		for (let { props: l, x: u, y: d } of ne(e, t, n, i)) {
+		for (let { props: l, x: u, y: d } of M(e, t, n, i)) {
 			if (o["icon-image"] !== void 0) {
 				let e = String(G(o["icon-image"], l)), t = f.get(e);
 				if (!t) {
@@ -12001,27 +12002,27 @@ function Tn(e, t, n, r, i, a, o) {
 			}
 			o["text-field"] !== void 0 && (r.font = `${c ? "bold " : ""}${Sn(G(o["text-size"], l), 12)}px ${fn}`, r.textAlign = "center", r.textBaseline = "middle", r.fillStyle = xn(G(s["text-color"], l), "#000000"), r.fillText(String(G(o["text-field"], l)), u, d));
 		}
-	}, oe = () => {
-		let e = Vt(l.zoom), t = l.width / 2 - l.center.x * e, n = l.height / 2 - l.center.y * e;
-		r.setTransform(c, 0, 0, c, 0, 0), r.globalAlpha = 1, r.fillStyle = s.water, r.fillRect(0, 0, l.width, l.height), M(t, n, e), r.fillStyle = s.land, r.fill("evenodd"), r.strokeStyle = s.line, r.lineWidth = .75, r.globalAlpha = .6, r.stroke(), re(t, n, e), r.lineWidth = .5, r.globalAlpha = .25, r.stroke(), r.globalAlpha = 1;
-		let i = [];
-		for (let r of d) r.type === "line" ? N(r, t, n, e) : r.type === "circle" ? ie(r, t, n, e) : r.type === "symbol" && ae(r, t, n, e, i);
-		for (let e of i) for (let t of h) t(e);
 	}, se = () => {
-		D(), g ? oe() : O();
+		let e = Vt(l.zoom), t = l.width / 2 - l.center.x * e, n = l.height / 2 - l.center.y * e;
+		r.setTransform(c, 0, 0, c, 0, 0), r.globalAlpha = 1, r.fillStyle = s.water, r.fillRect(0, 0, l.width, l.height), re(t, n, e), r.fillStyle = s.land, r.fill("evenodd"), r.strokeStyle = s.line, r.lineWidth = .75, r.globalAlpha = .6, r.stroke(), N(t, n, e), r.lineWidth = .5, r.globalAlpha = .25, r.stroke(), r.globalAlpha = 1;
+		let i = [];
+		for (let r of d) r.type === "line" ? ie(r, t, n, e) : r.type === "circle" ? ae(r, t, n, e) : r.type === "symbol" && oe(r, t, n, e, i);
+		for (let e of i) for (let t of h) t(e);
+	}, P = () => {
+		D(), g ? se() : O();
 	};
-	function P(e) {
+	function ce(e) {
 		if (v = !1, !_) {
-			if (te(e), !g) {
+			if (j(e), !g) {
 				g = !0;
 				for (let e of m.get("ready")?.splice(0) ?? []) e();
 			}
-			oe(), y && O();
+			se(), y && O();
 		}
 	}
-	let ce = (e, t, n) => {
+	let le = (e, t, n) => {
 		let r = Vt(l.zoom), i = l.width / 2 - l.center.x * r, a = l.height / 2 - l.center.y * r, o = [];
-		for (let s of ne(e, i, a, r).reverse()) {
+		for (let s of M(e, i, a, r).reverse()) {
 			let r = !1;
 			if (e.type === "circle") {
 				let i = e.paint ?? {}, a = Sn(G(i["circle-radius"], s.props), 5) + Sn(G(i["circle-stroke-width"], s.props), 0) / 2;
@@ -12041,42 +12042,36 @@ function Tn(e, t, n, r, i, a, o) {
 			});
 		}
 		return o;
-	}, le = (e) => {
-		let t = n.getBoundingClientRect(), r = n.offsetWidth && t.width / n.offsetWidth || 1;
-		return {
-			x: (e.clientX - t.left) / r,
-			y: (e.clientY - t.top) / r
-		};
-	}, ue = (e) => {
-		e.button === 0 && e.isPrimary && (A(), b = {
+	}, ue = (e) => k.develop.framePoint(n, e.clientX, e.clientY), de = (e) => {
+		e.button === 0 && e.isPrimary && (ee(), b = {
 			pointerId: e.pointerId,
-			from: le(e),
+			from: ue(e),
 			center: l.center,
 			moved: !1
 		}, n.setPointerCapture?.(e.pointerId));
-	}, de = (e) => {
-		b && e.pointerId === b.pointerId && (b.moved && E("drag"), b = null);
 	}, fe = (e) => {
+		b && e.pointerId === b.pointerId && (b.moved && E("drag"), b = null);
+	}, pe = (e) => {
 		if (!b || e.pointerId !== b.pointerId) return;
-		if (!(e.buttons & 1)) return de(e);
-		let t = le(e), n = t.x - b.from.x, r = t.y - b.from.y;
+		if (!(e.buttons & 1)) return fe(e);
+		let t = ue(e), n = t.x - b.from.x, r = t.y - b.from.y;
 		if (!b.moved) {
 			if (Math.hypot(n, r) <= tn) return;
 			b.moved = !0, w("drag");
 		}
 		let i = Vt(l.zoom);
-		k({
+		A({
 			...l,
 			center: {
 				x: b.center.x - n / i,
 				y: b.center.y - r / i
 			}
 		});
-	}, pe = (e) => {
+	}, me = (e) => {
 		if (e.deltaY === 0) return;
-		e.preventDefault(), A();
-		let t = e.deltaMode === K ? 40 : e.deltaMode === q ? 800 : 1, n = Math.max(0, Math.min(22, l.zoom - e.deltaY * t * (e.ctrlKey ? rn : nn))), r = le(e), i = W(l, r.x, r.y), a = Vt(n);
-		w("wheel"), k({
+		e.preventDefault(), ee();
+		let t = e.deltaMode === K ? 40 : e.deltaMode === q ? 800 : 1, n = Math.max(0, Math.min(22, l.zoom - e.deltaY * t * (e.ctrlKey ? rn : nn))), r = ue(e), i = W(l, r.x, r.y), a = Vt(n);
+		w("wheel"), A({
 			...l,
 			zoom: n,
 			center: {
@@ -12084,19 +12079,19 @@ function Tn(e, t, n, r, i, a, o) {
 				y: i.y - (r.y - l.height / 2) / a
 			}
 		}), x && clearTimeout(x), x = setTimeout(() => E("wheel"), an);
-	}, me = () => {
+	}, he = () => {
 		if (_) return;
 		let e = t.clientWidth, n = t.clientHeight;
 		(e !== l.width || n !== l.height) && (w("resize"), l = Wt({
 			...l,
 			width: e,
 			height: n
-		}), se(), E("resize"));
+		}), P(), E("resize"));
 	};
-	n.addEventListener("pointerdown", ue), n.addEventListener("pointermove", fe), n.addEventListener("pointerup", de), n.addEventListener("pointercancel", de), n.addEventListener("lostpointercapture", de), n.addEventListener("wheel", pe, { passive: !1 }), n.addEventListener("contextrestored", O);
-	let he = typeof ResizeObserver > "u" ? null : new ResizeObserver(me);
-	he ? he.observe(t) : window.addEventListener("resize", me), D(), O();
-	let ge = {
+	n.addEventListener("pointerdown", de), n.addEventListener("pointermove", pe), n.addEventListener("pointerup", fe), n.addEventListener("pointercancel", fe), n.addEventListener("lostpointercapture", fe), n.addEventListener("wheel", me, { passive: !1 }), n.addEventListener("contextrestored", O);
+	let ge = typeof ResizeObserver > "u" ? null : new ResizeObserver(he);
+	ge ? ge.observe(t) : window.addEventListener("resize", he), D(), O();
+	let _e = {
 		kind: "basic",
 		on: (e, t) => {
 			if (e === "ready" && g) return void t();
@@ -12144,16 +12139,16 @@ function Tn(e, t, n, r, i, a, o) {
 				ratio: r
 			}), p.delete(t), O());
 		},
-		updateImage: (e, t) => ge.addImage(e, t, f.get(e)?.ratio ?? 1),
+		updateImage: (e, t) => _e.addImage(e, t, f.get(e)?.ratio ?? 1),
 		setStyle: (e) => {
 			s = yt(e), O();
 		},
-		easeTo: (e, t, n) => ee(Wt({
+		easeTo: (e, t, n) => te(Wt({
 			...l,
 			center: U(e),
 			zoom: t ?? l.zoom
 		}), n),
-		fitBounds: (e, t, n) => ee(Ut(e, l.width, l.height, t, n), sn),
+		fitBounds: (e, t, n) => te(Ut(e, l.width, l.height, t, n), sn),
 		getBounds: () => {
 			let e = Ht(W(l, 0, 0)), t = Ht(W(l, l.width, l.height));
 			return T(e.lon, t.lat, t.lon, e.lat);
@@ -12161,18 +12156,18 @@ function Tn(e, t, n, r, i, a, o) {
 		getCenter: () => Ht(l.center),
 		getZoom: () => l.zoom,
 		unproject: (e, t) => Ht(W(l, e, t)),
-		hitTest: (e, t, n) => [...d].reverse().filter((e) => n.includes(e.id)).flatMap((n) => ce(n, e, t)),
+		hitTest: (e, t, n) => [...d].reverse().filter((e) => n.includes(e.id)).flatMap((n) => le(n, e, t)),
 		setCursor: (e) => {
 			n.style.cursor = e;
 		},
 		setPixelRatio: (e) => {
-			c = e, se();
+			c = e, P();
 		},
 		remove: () => {
-			_ || (_ = !0, y = null, x && clearTimeout(x), he?.disconnect(), window.removeEventListener("resize", me), n.remove());
+			_ || (_ = !0, y = null, x && clearTimeout(x), ge?.disconnect(), window.removeEventListener("resize", he), n.remove());
 		}
 	};
-	return ge;
+	return _e;
 }
 //#endregion
 //#region node_modules/maplibre-gl/dist/maplibre-gl.js
@@ -45551,7 +45546,7 @@ function Qn(e, t, n) {
 	return `${Zn(e)} of ${Zn(t)} ${t === 1 ? "photo has" : "photos have"} a location · ${Zn(n)} in view`;
 }
 function $n() {
-	return !!new URLSearchParams(window.location.search).get("detached");
+	return k.navigation.ownModule() !== null;
 }
 async function er() {
 	let e = P().getState().popUndo();
@@ -45566,12 +45561,10 @@ function tr() {
 	return O.useEffect(() => {
 		if (!t) return;
 		let e = (e) => {
-			e.key === "Escape" && n(!1);
-		}, i = (e) => {
 			(!(e.target instanceof Node) || !r.current?.contains(e.target)) && n(!1);
-		};
-		return window.addEventListener("keydown", e), window.addEventListener("pointerdown", i, !0), () => {
-			window.removeEventListener("keydown", e), window.removeEventListener("pointerdown", i, !0);
+		}, i = k.ui.onEscape(() => n(!1));
+		return window.addEventListener("pointerdown", e, !0), () => {
+			i(), window.removeEventListener("pointerdown", e, !0);
 		};
 	}, [t]), e.length === 0 ? null : /* @__PURE__ */ O.createElement("div", {
 		ref: r,
@@ -45651,77 +45644,38 @@ var rr = {
 	lon: 0,
 	lat: 20,
 	zoom: 1
-}, ir = 10, ar = 48, or = 16, sr = 4, cr = 500, lr = 600, ur = 4, dr = 15e3, fr = (e, t) => t ? e.filter((e) => C(x(e), t)).length : 0, pr = (e) => {
+}, ir = 10, ar = 48, or = 16, sr = 4, cr = 500, lr = 600, ur = 15e3, dr = (e, t) => t ? e.filter((e) => C(x(e), t)).length : 0, fr = (e) => {
 	let t = L(e.exif.dateTimeOriginal);
 	return t === void 0 ? e.filename : `${e.filename} · ${new Date(t).toLocaleString()}`;
-}, mr = (e) => e instanceof Error ? e.message : String(e), hr = (e) => e.map((e) => `${e.id}@${x(e)?.lon},${x(e)?.lat}`).join("|"), gr = (e, t) => {
+}, pr = (e) => e instanceof Error ? e.message : String(e), mr = (e) => e.map((e) => `${e.id}@${x(e)?.lon},${x(e)?.lat}`).join("|"), hr = (e, t) => {
 	let n = e.unproject(t.x, t.y);
 	return {
 		lon: w(n.lon),
 		lat: n.lat
 	};
-}, _r = (e) => {
+}, gr = (e) => {
 	let t = window.devicePixelRatio || 1;
 	return e ? t * ((typeof e.currentCSSZoom == "number" ? e.currentCSSZoom : e.offsetWidth ? Math.round(e.getBoundingClientRect().width / e.offsetWidth * 100) / 100 : 1) || 1) : t;
 };
-function vr(e, t, n, r, i) {
+function _r(e, t, n, r, i) {
 	let a = D(r, Fn);
 	e.addSource(bt, Pt(a, n.clusterRadius)), e.addSource(xt, Pt(a, n.clusterRadius)), e.addSource(St, Ft(i.lines)), e.addSource(Ct, Ft(i.points)), e.addLayer(H(t)), e.addLayer(Lt(t));
 	for (let r of Rt(t, n.pinThumbnails)) e.addLayer(r);
 }
-function yr(e, t, n, r, i) {
+function vr(e, t, n, r, i) {
 	for (let t of jt) e.removeLayer(t);
 	for (let t of wt) e.removeSource(t);
-	vr(e, t, n, r, i);
+	_r(e, t, n, r, i);
 }
-function br(e, t) {
+function yr(e, t) {
 	let n = D(t, Fn);
 	e.setData(bt, n), e.setData(xt, n);
 }
-function xr(e, t) {
+function br(e, t) {
 	let n = E(t.map((e) => x(e)));
 	n && e.fitBounds(n, ar, or);
 }
-function Sr({ x: e, y: t, onClose: n, children: r }) {
-	let i = O.useRef(null), [a, o] = O.useState({
-		x: e,
-		y: t
-	});
-	return O.useLayoutEffect(() => {
-		let n = i.current, r = n?.offsetParent;
-		o(n && r ? {
-			x: Math.max(0, Math.min(e, r.clientWidth - n.offsetWidth - ur)),
-			y: Math.max(0, Math.min(t, r.clientHeight - n.offsetHeight - ur))
-		} : {
-			x: e,
-			y: t
-		});
-	}, [e, t]), O.useEffect(() => {
-		let e = (e) => {
-			e.key === "Escape" && n();
-		};
-		return window.addEventListener("keydown", e), window.addEventListener("contextmenu", n, !0), () => {
-			window.removeEventListener("keydown", e), window.removeEventListener("contextmenu", n, !0);
-		};
-	}, [n]), /* @__PURE__ */ O.createElement("div", {
-		ref: i,
-		role: "menu",
-		style: {
-			position: "absolute",
-			left: a.x,
-			top: a.y,
-			display: "flex",
-			flexDirection: "column",
-			gap: 2,
-			padding: 4,
-			borderRadius: 4,
-			background: A.tokens.surface1,
-			border: `1px solid ${A.tokens.border}`,
-			zIndex: 2
-		}
-	}, r);
-}
-function Cr({ factory: e = kn, draw: t = zn, pixelRatio: n }) {
+function xr({ factory: e = kn, draw: t = zn, pixelRatio: n }) {
 	let r = O.useRef(null), i = O.useRef(null), [a, o] = O.useState(null), [s, c] = O.useState(!1), [l, u] = O.useState(0), [d, f] = O.useState(!1), [p, m] = O.useState(!1), h = Jn(), g = k.catalog.useVisiblePhotos({ without: [le] }), _ = O.useMemo(() => g.filter(S), [g]), v = O.useMemo(() => new Map(g.map((e) => [e.id, e])), [g]), y = k.stores.useCatalogStore, b = y((e) => e.selectedIds), C = y((e) => e.activePhotoId), w = k.stores.useThemeStore((e) => e.activeId), T = ce((e) => e.overlayData), E = ce((e) => e.tileError), D = ce((e) => e.rendererLost), ee = ce((e) => e.error), { onContextMenu: te, overlays: j } = k.catalog.usePhotoActions(), [ne, M] = O.useState(null), [re, N] = O.useState(null), ie = O.useCallback(() => N(null), []), ae = O.useRef(_);
 	ae.current = _;
 	let oe = O.useRef(v);
@@ -45751,7 +45705,7 @@ function Cr({ factory: e = kn, draw: t = zn, pixelRatio: n }) {
 		P().getState().setRendererLost(!1), P().getState().setTileError(!1), f(!1), m(!1);
 		let p = nt(et(tt()));
 		me.current = p, _e.current = w;
-		let h = Yn(k.settings.get), g = h ?? rr, _ = ue.current ?? _r(r.current);
+		let h = Yn(k.settings.get), g = h ?? rr, _ = ue.current ?? gr(r.current);
 		return fe.current = _, pe.current = _, he.current = Ln({
 			draw: t,
 			border: p.pinBorder,
@@ -45767,15 +45721,15 @@ function Cr({ factory: e = kn, draw: t = zn, pixelRatio: n }) {
 			s = e, we.current = e;
 			let t = !1, n = !1, r = () => {
 				let t = e.getBounds(), n = P().getState();
-				n.setBounds(t), n.setCounts(n.located, n.total, fr(ae.current, t)), n.filterToView && de();
+				n.setBounds(t), n.setCounts(n.located, n.total, dr(ae.current, t)), n.filterToView && de();
 			};
 			e.on("ready", () => {
 				t = !0;
 				let i = P().getState().overlayData;
-				vr(e, p, se.current, ae.current, i), e.setFilter(kt, It([...y.getState().selectedIds])), ye.current = {
+				_r(e, p, se.current, ae.current, i), e.setFilter(kt, It([...y.getState().selectedIds])), ye.current = {
 					clusterRadius: se.current.clusterRadius,
 					pinThumbnails: se.current.pinThumbnails
-				}, xe.current = hr(ae.current), Se.current = i, c(!0), r(), h || xr(e, ae.current), e.kind === "full" && !n && (d = setTimeout(() => P().getState().setTileError(!0), dr));
+				}, xe.current = mr(ae.current), Se.current = i, c(!0), r(), h || br(e, ae.current), e.kind === "full" && !n && (d = setTimeout(() => P().getState().setTileError(!0), ur));
 			}), e.onImageMissing((t) => {
 				let n = In(t);
 				if (!n) return;
@@ -45799,7 +45753,7 @@ function Cr({ factory: e = kn, draw: t = zn, pixelRatio: n }) {
 			}), e.onSourceLoaded((e) => {
 				e === "openmaptiles" && (n = !0, d && clearTimeout(d), P().getState().setTileError(!1));
 			}), e.on("webglcontextlost", () => P().getState().setRendererLost(!0)), e.on("webglcontextrestored", () => u((e) => e + 1)), P().getState().setCommands({
-				fitToPhotos: () => xr(e, ae.current),
+				fitToPhotos: () => br(e, ae.current),
 				fitToOverlay: (t) => {
 					let n = P().getState().overlays.find((e) => e.key === t)?.bounds;
 					n && e.fitBounds({
@@ -45810,7 +45764,7 @@ function Cr({ factory: e = kn, draw: t = zn, pixelRatio: n }) {
 				},
 				focus: (t) => {
 					let n = new Set(t);
-					xr(e, ae.current.filter((e) => n.has(e.id)));
+					br(e, ae.current.filter((e) => n.has(e.id)));
 				}
 			}), o(e);
 		}).catch(() => {
@@ -45827,7 +45781,7 @@ function Cr({ factory: e = kn, draw: t = zn, pixelRatio: n }) {
 	]), O.useEffect(() => {
 		if (!a) return;
 		let e = r.current, t = () => {
-			let t = n ?? _r(e);
+			let t = n ?? gr(e);
 			Math.abs(t - fe.current) < .001 || (fe.current = t, a.setPixelRatio(t));
 		}, i = null, o = () => {
 			t(), s();
@@ -45841,10 +45795,10 @@ function Cr({ factory: e = kn, draw: t = zn, pixelRatio: n }) {
 		};
 	}, [a, n]), O.useEffect(() => {
 		if (!a || !s) return;
-		let e = hr(_);
-		xe.current !== e && (br(a, _), xe.current = e);
+		let e = mr(_);
+		xe.current !== e && (yr(a, _), xe.current = e);
 		let t = P().getState();
-		t.setCounts(_.length, g.length, fr(_, t.bounds));
+		t.setCounts(_.length, g.length, dr(_, t.bounds));
 		for (let e of [...ge.current]) Te(a, e);
 	}, [
 		a,
@@ -45884,10 +45838,10 @@ function Cr({ factory: e = kn, draw: t = zn, pixelRatio: n }) {
 		if (!a || !s || _e.current === w) return;
 		_e.current = w;
 		let e = nt(et(tt()));
-		me.current = e, a.setStyle(vt(e)), yr(a, e, se.current, ae.current, T), a.setFilter(kt, It([...y.getState().selectedIds])), ye.current = {
+		me.current = e, a.setStyle(vt(e)), vr(a, e, se.current, ae.current, T), a.setFilter(kt, It([...y.getState().selectedIds])), ye.current = {
 			clusterRadius: se.current.clusterRadius,
 			pinThumbnails: se.current.pinThumbnails
-		}, xe.current = hr(ae.current), Se.current = T, he.current?.setBorder(e.pinBorder);
+		}, xe.current = mr(ae.current), Se.current = T, he.current?.setBorder(e.pinBorder);
 		for (let e of ae.current) a.hasImage(Fn(e.id)) && Te(a, e.id);
 	}, [
 		a,
@@ -45898,10 +45852,10 @@ function Cr({ factory: e = kn, draw: t = zn, pixelRatio: n }) {
 	]), O.useEffect(() => {
 		if (!a || !s || !me.current) return;
 		let e = ye.current;
-		e && e.clusterRadius === h.clusterRadius && e.pinThumbnails === h.pinThumbnails || (yr(a, me.current, h, ae.current, T), a.setFilter(kt, It([...y.getState().selectedIds])), ye.current = {
+		e && e.clusterRadius === h.clusterRadius && e.pinThumbnails === h.pinThumbnails || (vr(a, me.current, h, ae.current, T), a.setFilter(kt, It([...y.getState().selectedIds])), ye.current = {
 			clusterRadius: h.clusterRadius,
 			pinThumbnails: h.pinThumbnails
-		}, xe.current = hr(ae.current), Se.current = T);
+		}, xe.current = mr(ae.current), Se.current = T);
 	}, [
 		a,
 		s,
@@ -45920,15 +45874,10 @@ function Cr({ factory: e = kn, draw: t = zn, pixelRatio: n }) {
 		}
 	}, [a, s]);
 	let Ee = (e) => {
-		let t = r.current, n = t?.getBoundingClientRect();
-		if (!t || !n) return {
+		let t = r.current;
+		return t ? k.develop.framePoint(t, e.clientX, e.clientY) : {
 			x: e.clientX,
 			y: e.clientY
-		};
-		let i = n.width / t.offsetWidth || 1, a = n.height / t.offsetHeight || 1;
-		return {
-			x: (e.clientX - n.left) / i,
-			y: (e.clientY - n.top) / a
 		};
 	}, De = (e) => i.current?.contains(e.target) ?? !1, Oe = () => P().getState().setHandledActiveId(y.getState().activePhotoId), ke = (e, t) => {
 		let n = y.getState();
@@ -45961,13 +45910,13 @@ function Cr({ factory: e = kn, draw: t = zn, pixelRatio: n }) {
 		if (!a || !s || !De(e)) return;
 		let t = Ee(e), n = a.hitTest(t.x, t.y, [At])[0];
 		if (n?.id) {
-			te(n.id, e), Oe();
+			N(null), te(n.id, e), Oe();
 			return;
 		}
 		e.preventDefault(), N({
-			x: t.x,
-			y: t.y,
-			loc: gr(a, t)
+			x: e.clientX,
+			y: e.clientY,
+			loc: hr(a, t)
 		});
 	}, Pe = (e) => {
 		if (!a || !s || !De(e) || e.buttons !== 0) {
@@ -45980,7 +45929,7 @@ function Cr({ factory: e = kn, draw: t = zn, pixelRatio: n }) {
 		M(i ? {
 			x: t.x,
 			y: t.y,
-			text: pr(i)
+			text: fr(i)
 		} : null);
 	}, Fe = (e) => {
 		e.dataTransfer.types.includes("application/x-safelight-photos") && (e.preventDefault(), e.dataTransfer.dropEffect = "copy");
@@ -45989,20 +45938,19 @@ function Cr({ factory: e = kn, draw: t = zn, pixelRatio: n }) {
 		let t = We(e.dataTransfer);
 		if (t.length === 0) return;
 		e.preventDefault();
-		let n = gr(a, Ee(e));
+		let n = hr(a, Ee(e));
 		be(t, {
 			lat: n.lat,
 			lon: n.lon
-		}, Ce()).catch((e) => P().getState().setError(mr(e)));
+		}, Ce()).catch((e) => P().getState().setError(pr(e)));
 	}, F = (e) => {
-		let t = [...y.getState().selectedIds];
-		N(null), be(t, {
+		be([...y.getState().selectedIds], {
 			lat: e.lat,
 			lon: e.lon
-		}, Ce()).catch((e) => P().getState().setError(mr(e)));
+		}, Ce()).catch((e) => P().getState().setError(pr(e)));
 	}, Le = () => {
 		P().getState().setRendererLost(!1), f(!1), u((e) => e + 1);
-	}, Re = b.size, { Button: I } = A, ze = a?.kind === "basic", Be = ee ?? (p ? "Map style failed to load" : E && !ze ? "Map tiles unavailable — offline?" : null), He = d ? "The map could not start." : D ? "The map renderer was lost." : null, Ue = ze ? st : ot;
+	}, Re = b.size, { Button: I } = A, { ContextMenu: ze } = k.components, Be = a?.kind === "basic", He = ee ?? (p ? "Map style failed to load" : E && !Be ? "Map tiles unavailable — offline?" : null), Ue = d ? "The map could not start." : D ? "The map renderer was lost." : null, Ge = Be ? st : ot;
 	return /* @__PURE__ */ O.createElement("div", { style: {
 		position: "relative",
 		flex: 1,
@@ -46045,32 +45993,30 @@ function Cr({ factory: e = kn, draw: t = zn, pixelRatio: n }) {
 		color: A.tokens.textPrimary,
 		fontSize: 11,
 		whiteSpace: "nowrap"
-	} }, ne.text), re && /* @__PURE__ */ O.createElement(Sr, {
+	} }, ne.text), re && /* @__PURE__ */ O.createElement(ze, {
 		x: re.x,
 		y: re.y,
-		onClose: ie
-	}, /* @__PURE__ */ O.createElement(I, {
-		size: "sm",
-		variant: "ghost",
-		disabled: Re === 0,
-		onClick: () => F(re.loc)
-	}, Re === 0 ? "Place selected photos here" : `Place ${Re} selected ${Re === 1 ? "photo" : "photos"} here`), /* @__PURE__ */ O.createElement(I, {
-		size: "sm",
-		variant: "ghost",
-		disabled: Re === 0,
-		onClick: () => {
-			N(null), P().getState().setLocationRequest({
-				ids: [...y.getState().selectedIds],
-				initial: re.loc
-			});
-		}
-	}, "Set location…"), /* @__PURE__ */ O.createElement(I, {
-		size: "sm",
-		variant: "ghost",
-		onClick: () => {
-			N(null), P().getState().commands?.fitToPhotos();
-		}
-	}, "Fit to photos")), ze && /* @__PURE__ */ O.createElement("div", {
+		onClose: ie,
+		items: [
+			{
+				label: Re === 0 ? "Place selected photos here" : `Place ${Re} selected ${Re === 1 ? "photo" : "photos"} here`,
+				disabled: Re === 0,
+				onClick: () => F(re.loc)
+			},
+			{
+				label: "Set location…",
+				disabled: Re === 0,
+				onClick: () => P().getState().setLocationRequest({
+					ids: [...y.getState().selectedIds],
+					initial: re.loc
+				})
+			},
+			{
+				label: "Fit to photos",
+				onClick: () => P().getState().commands?.fitToPhotos()
+			}
+		]
+	}), Be && /* @__PURE__ */ O.createElement("div", {
 		role: "note",
 		style: {
 			position: "absolute",
@@ -46091,7 +46037,7 @@ function Cr({ factory: e = kn, draw: t = zn, pixelRatio: n }) {
 		size: "sm",
 		variant: "ghost",
 		onClick: Le
-	}, "Try full map")), Be && /* @__PURE__ */ O.createElement("div", {
+	}, "Try full map")), He && /* @__PURE__ */ O.createElement("div", {
 		role: "status",
 		style: {
 			position: "absolute",
@@ -46107,11 +46053,11 @@ function Cr({ factory: e = kn, draw: t = zn, pixelRatio: n }) {
 			gap: 8,
 			alignItems: "center"
 		}
-	}, /* @__PURE__ */ O.createElement("span", null, Be), ee && /* @__PURE__ */ O.createElement(I, {
+	}, /* @__PURE__ */ O.createElement("span", null, He), ee && /* @__PURE__ */ O.createElement(I, {
 		size: "sm",
 		variant: "ghost",
 		onClick: () => P().getState().setError(null)
-	}, "Dismiss")), He && /* @__PURE__ */ O.createElement("div", { style: {
+	}, "Dismiss")), Ue && /* @__PURE__ */ O.createElement("div", { style: {
 		position: "absolute",
 		inset: 0,
 		display: "flex",
@@ -46122,7 +46068,7 @@ function Cr({ factory: e = kn, draw: t = zn, pixelRatio: n }) {
 		background: A.tokens.surface0,
 		color: A.tokens.textSecondary,
 		fontSize: 12
-	} }, /* @__PURE__ */ O.createElement("span", null, He), /* @__PURE__ */ O.createElement(I, {
+	} }, /* @__PURE__ */ O.createElement("span", null, Ue), /* @__PURE__ */ O.createElement(I, {
 		size: "sm",
 		onClick: Le
 	}, "Reload map")), /* @__PURE__ */ O.createElement("div", { style: {
@@ -46136,7 +46082,7 @@ function Cr({ factory: e = kn, draw: t = zn, pixelRatio: n }) {
 		fontSize: 10,
 		lineHeight: 1.4,
 		whiteSpace: "nowrap"
-	} }, Ue.map((e, t) => /* @__PURE__ */ O.createElement(O.Fragment, { key: e.href }, t > 0 && " · ", /* @__PURE__ */ O.createElement("a", {
+	} }, Ge.map((e, t) => /* @__PURE__ */ O.createElement(O.Fragment, { key: e.href }, t > 0 && " · ", /* @__PURE__ */ O.createElement("a", {
 		href: e.href,
 		target: "_blank",
 		rel: "noreferrer",
@@ -46145,37 +46091,37 @@ function Cr({ factory: e = kn, draw: t = zn, pixelRatio: n }) {
 }
 //#endregion
 //#region src/overlay-watch.ts
-var wr = 5, Tr = null, Y = /* @__PURE__ */ new Set();
-function Er() {
-	Tr = null, Y.clear();
+var Sr = 5, Cr = null, wr = /* @__PURE__ */ new Set();
+function Tr() {
+	Cr = null, wr.clear();
 }
-function Dr(e) {
-	let t = e.slice(0, wr).join("; "), n = e.length - wr;
+function Y(e) {
+	let t = e.slice(0, Sr).join("; "), n = e.length - Sr;
 	return n > 0 ? `${t}; … and ${n} more` : t;
 }
-function Or(e, t = () => !0) {
+function Er(e, t = () => !0) {
 	let n = typeof e.value == "object" && e.value !== null && !Array.isArray(e.value) ? e.value : {}, r = [], i = /* @__PURE__ */ new Set();
 	for (let [e, t] of Object.entries(n)) {
 		let { overlay: n, problems: a } = ie(e, t);
-		a.length > 0 && (i.add(e), Y.has(e) || (Y.add(e), console.warn(`[map] overlay ${JSON.stringify(e)} ${n ? "partly drawn" : "ignored"}: ${Dr(a)}`))), n && r.push(n);
+		a.length > 0 && (i.add(e), wr.has(e) || (wr.add(e), console.warn(`[map] overlay ${JSON.stringify(e)} ${n ? "partly drawn" : "ignored"}: ${Y(a)}`))), n && r.push(n);
 	}
-	for (let e of [...Y]) i.has(e) || Y.delete(e);
+	for (let e of [...wr]) i.has(e) || wr.delete(e);
 	let a = null;
-	if (Tr) for (let e of r) Tr.get(e.key) !== e.label && (a = e.key);
-	Tr = new Map(r.map((e) => [e.key, e.label]));
+	if (Cr) for (let e of r) Cr.get(e.key) !== e.label && (a = e.key);
+	Cr = new Map(r.map((e) => [e.key, e.label]));
 	let o = P().getState();
 	o.setOverlays(r), a !== null && (o.commands ? o.commands.fitToOverlay(a) : t() && o.setPendingFit(a));
 }
 //#endregion
 //#region src/StatusBar.tsx
-function kr() {
+function Dr() {
 	let e = ce((e) => e.located), t = ce((e) => e.total), n = ce((e) => e.inView);
 	return /* @__PURE__ */ O.createElement("span", null, Qn(e, t, n));
 }
 //#endregion
 //#region src/UntaggedStrip.tsx
-var Ar = 6, jr = 4, Mr = 40, Nr = 112, Pr = 6, Fr = 30;
-function Ir(e, t, n, r, i, a) {
+var Or = 6, kr = 4, Ar = 40, jr = 112, Mr = 6, Nr = 30;
+function Pr(e, t, n, r, i, a) {
 	let o = n + r;
 	if (o <= 0 || i <= 0 || t <= 0) return {
 		start: 0,
@@ -46187,19 +46133,19 @@ function Ir(e, t, n, r, i, a) {
 		end: Math.max(s, c)
 	};
 }
-function Lr() {
+function Fr() {
 	let e = k.catalog.useVisiblePhotos({ without: [le] }), t = O.useMemo(() => e.filter((e) => !S(e)), [e]), n = t.length === 0, r = k.stores.useCatalogStore, i = r((e) => e.selectedIds), a = r((e) => e.activePhotoId), { onContextMenu: o, overlays: s } = k.catalog.usePhotoActions();
 	k.catalog.useCullingShortcuts({ sizeSteps: !1 });
 	let { Thumbnail: c } = k.components, l = O.useRef(null), [u, d] = O.useState({
 		width: 0,
-		height: Nr
+		height: jr
 	}), [f, p] = O.useState(0);
 	O.useLayoutEffect(() => {
 		let e = l.current;
 		if (!e || typeof ResizeObserver > "u") return;
 		let t = () => d({
 			width: e.clientWidth,
-			height: e.clientHeight || Nr
+			height: e.clientHeight || jr
 		});
 		t();
 		let n = new ResizeObserver(t);
@@ -46230,10 +46176,10 @@ function Lr() {
 		color: A.tokens.textMuted,
 		fontSize: 11
 	} }, "Every visible photo has a location.");
-	let v = Math.max(Mr, u.height - 12), { start: y, end: b } = u.width > 0 ? Ir(f, u.width, v, jr, t.length, Pr) : {
+	let v = Math.max(Ar, u.height - 12), { start: y, end: b } = u.width > 0 ? Pr(f, u.width, v, kr, t.length, Mr) : {
 		start: 0,
-		end: Math.min(t.length, Fr)
-	}, x = 12 + t.length * v + (t.length - 1) * jr;
+		end: Math.min(t.length, Nr)
+	}, x = 12 + t.length * v + (t.length - 1) * kr;
 	return /* @__PURE__ */ O.createElement("div", {
 		ref: l,
 		"data-testid": "untagged-strip",
@@ -46252,8 +46198,8 @@ function Lr() {
 		key: e.id,
 		style: {
 			position: "absolute",
-			left: Ar + (y + t) * (v + jr),
-			top: Ar
+			left: Or + (y + t) * (v + kr),
+			top: Or
 		}
 	}, /* @__PURE__ */ O.createElement(c, {
 		photo: e,
@@ -46268,7 +46214,7 @@ function Lr() {
 }
 //#endregion
 //#region src/index.tsx
-var Rr = "map", zr = "map.untagged", Br = "gps-track.panel", Vr = "map.go", Hr = "map.show-on-map", Ur = "map.set-location", Wr = "map.remove-location", X = "map.styles", Gr = "map.location-dialog.library", Kr = "map.location-dialog.develop", qr = { rails: [
+var Ir = "map", Lr = "map.untagged", Rr = "gps-track.panel", zr = "map.go", Br = "map.show-on-map", Vr = "map.set-location", Hr = "map.remove-location", Ur = "map.styles", Wr = "map.location-dialog.library", X = "map.location-dialog.develop", Gr = { rails: [
 	{
 		side: "left",
 		width: 240,
@@ -46277,34 +46223,34 @@ var Rr = "map", zr = "map.untagged", Br = "gps-track.panel", Vr = "map.go", Hr =
 	{
 		side: "right",
 		width: 280,
-		panels: [Br, "core.info"]
+		panels: [Rr, "core.info"]
 	},
 	{
 		side: "bottom",
 		height: 112,
-		panels: [zr]
+		panels: [Lr]
 	}
-] }, Jr = null;
-function Yr(e, t = {}) {
-	ee(e), se(), Er(), e.variables.register(te, {
+] }, Kr = null;
+function qr(e, t = {}) {
+	ee(e), se(), Tr(), e.variables.register(te, {
 		initial: {},
 		description: j
-	}), Jr = e.variables.subscribe(te, (t) => Or(t, () => Qr(e))), _((t) => {
+	}), Kr = e.variables.subscribe(te, (t) => Er(t, () => Xr(e))), _((t) => {
 		let n = P().getState();
-		n.commands ? n.commands.focus(t) : !$n() && !Zr(e) && n.setPendingFocus(t);
+		n.commands ? n.commands.focus(t) : !$n() && !Yr(e) && n.setPendingFocus(t);
 	}, t.channelFactory), e.registerStylesheet({
-		id: X,
+		id: Ur,
 		css: `${l}\n${I}`
 	}), e.registerModule({
 		id: "map",
 		label: "Map",
-		component: Cr,
-		statusBar: kr,
-		defaultLayout: qr
+		component: xr,
+		statusBar: Dr,
+		defaultLayout: Gr
 	}), e.registerPanel({
-		id: zr,
+		id: Lr,
 		title: "Untagged",
-		component: Lr,
+		component: Fr,
 		fill: !0,
 		allowBottomDock: !0,
 		defaultDock: {
@@ -46314,39 +46260,39 @@ function Yr(e, t = {}) {
 			height: 112
 		}
 	}), e.registerKeybinding({
-		id: Vr,
+		id: zr,
 		label: "Go to Map",
 		category: "General",
 		defaultCombo: "M",
 		handler: () => e.navigation.goTo("map")
 	}), de(), e.registerGridMenuItem({
-		id: Hr,
+		id: Br,
 		label: "Show on map",
 		order: 60,
-		enabled: (t) => Xr(e, t).some(S),
+		enabled: (t) => Jr(e, t).some(S),
 		onClick: (t) => {
-			let n = Xr(e, t).filter(S).map((e) => e.id), r = P().getState();
-			r.commands ? r.commands.focus(n) : (v(n), Zr(e) || r.setPendingFocus(n)), e.navigation.goTo("map");
+			let n = Jr(e, t).filter(S).map((e) => e.id), r = P().getState();
+			r.commands ? r.commands.focus(n) : (v(n), Yr(e) || r.setPendingFocus(n)), e.navigation.goTo("map");
 		}
 	}), e.registerSlot({
-		id: Gr,
+		id: Wr,
 		slot: "library-toolbar",
 		component: Ve
 	}), e.registerSlot({
-		id: Kr,
+		id: X,
 		slot: "develop-toolbar",
 		component: Ve
 	}), e.registerGridMenuItem({
-		id: Ur,
+		id: Vr,
 		label: (e) => e.length > 1 ? `Set location… (${e.length})` : "Set location…",
 		order: 61,
 		onClick: (t) => {
 			let n = P().getState();
 			if (n.dialogHosts === 0) {
-				if (Zr(e)) return;
+				if (Yr(e)) return;
 				e.navigation.goTo("map");
 			}
-			let r = Xr(e, t), i = r.length === 1 ? x(r[0]) : null;
+			let r = Jr(e, t), i = r.length === 1 ? x(r[0]) : null;
 			n.setLocationRequest({
 				ids: t,
 				initial: i,
@@ -46354,13 +46300,13 @@ function Yr(e, t = {}) {
 			});
 		}
 	}), e.registerGridMenuItem({
-		id: Wr,
+		id: Hr,
 		label: (t) => {
-			let n = Xr(e, t).filter(S).length;
+			let n = Jr(e, t).filter(S).length;
 			return n > 1 ? `Remove location (${n})` : "Remove location";
 		},
 		order: 62,
-		enabled: (t) => Xr(e, t).some(S),
+		enabled: (t) => Jr(e, t).some(S),
 		onClick: (e) => {
 			xe(e, Ce()).catch((e) => P().getState().setError(e instanceof Error ? e.message : String(e)));
 		}
@@ -46375,25 +46321,25 @@ function Yr(e, t = {}) {
 		fields: [...Un]
 	});
 }
-function Xr(e, t) {
+function Jr(e, t) {
 	let n = new Set(t);
 	return e.stores.useCatalogStore.getState().photos.filter((e) => n.has(e.id));
 }
-function Zr(e) {
+function Yr(e) {
 	return e.stores.useUIStore.getState().detached.has("map");
 }
-function Qr(e) {
-	let t = new URLSearchParams(window.location.search).get("detached");
-	return t ? t === "map" : !Zr(e);
+function Xr(e) {
+	let t = e.navigation.ownModule();
+	return t ? t === "map" : !Yr(e);
 }
-function $r() {
-	Jr?.(), Jr = null, Er(), y();
+function Zr() {
+	Kr?.(), Kr = null, Tr(), y();
 	try {
 		let e = P().getState();
 		e.setCommands(null), e.setOverlays([]), e.setPendingFit(null), e.setFilterToView(!1), e.setLocationRequest(null);
 	} catch {}
 }
 //#endregion
-export { qr as DEFAULT_LAYOUT, Br as GPS_TRACK_PANEL, Vr as KEY_GO, Wr as MENU_REMOVE, Ur as MENU_SET, Hr as MENU_SHOW, Rr as MODULE_ID, zr as PANEL_UNTAGGED, Kr as SLOT_DEVELOP_DIALOG, Gr as SLOT_LIBRARY_DIALOG, X as STYLESHEET_ID, Yr as activate, $r as deactivate };
+export { Gr as DEFAULT_LAYOUT, Rr as GPS_TRACK_PANEL, zr as KEY_GO, Hr as MENU_REMOVE, Vr as MENU_SET, Br as MENU_SHOW, Ir as MODULE_ID, Lr as PANEL_UNTAGGED, X as SLOT_DEVELOP_DIALOG, Wr as SLOT_LIBRARY_DIALOG, Ur as STYLESHEET_ID, qr as activate, Zr as deactivate };
 
 //# sourceMappingURL=index.js.map

@@ -1,6 +1,6 @@
 import { syncInViewFilter } from "./filter";
 import { applyUndo, catalogDeps } from "./geotag";
-import { React, ui } from "./rt";
+import { React, api, ui } from "./rt";
 import { store, useMapStore } from "./store";
 
 const n = (v: number) => v.toLocaleString("en-US");
@@ -9,11 +9,10 @@ export function countsText(located: number, total: number, inView: number): stri
   return `${n(located)} of ${n(total)} ${total === 1 ? "photo has" : "photos have"} a location · ${n(inView)} in view`;
 }
 
-/** True in a Map pop-out window: its own `?detached=` query param is set to a
- *  non-empty value. Such a window can't reach the main window's Library grid,
+/** True in a pop-out window, which can't reach the main window's Library grid,
  *  so the toggle that filters it to the map view has nothing to act on. */
 export function isDetachedWindow(): boolean {
-  return !!new URLSearchParams(window.location.search).get("detached");
+  return api.navigation.ownModule() !== null;
 }
 
 /** Pop the newest undo entry and restore it. A failed write puts the entry
@@ -39,17 +38,14 @@ function OverlaysMenu() {
 
   React.useEffect(() => {
     if (!open) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
     const onPointerDown = (e: Event) => {
       if (!(e.target instanceof Node) || !ref.current?.contains(e.target)) setOpen(false);
     };
-    window.addEventListener("keydown", onKeyDown);
+    const giveBack = api.ui.onEscape(() => setOpen(false));
     // Capture phase, so a click that opens something else still closes this.
     window.addEventListener("pointerdown", onPointerDown, true);
     return () => {
-      window.removeEventListener("keydown", onKeyDown);
+      giveBack();
       window.removeEventListener("pointerdown", onPointerDown, true);
     };
   }, [open]);

@@ -2,6 +2,7 @@ import type {
   ComponentType,
   CSSProperties,
   DragEvent as ReactDragEvent,
+  JSX,
   MouseEvent as ReactMouseEvent,
   ReactNode,
 } from "react";
@@ -71,6 +72,24 @@ export interface UIState {
 
 export interface ThemeStoreState {
   activeId: string;
+}
+
+export interface ContextMenuItem {
+  label: string;
+  onClick: () => void;
+  /** Render in the red danger colour (e.g. Remove). */
+  danger?: boolean;
+  disabled?: boolean;
+}
+
+/** A horizontal divider between groups of items. */
+export type ContextMenuEntry = ContextMenuItem | "separator";
+
+export interface ContextMenuProps {
+  x: number;
+  y: number;
+  items: ContextMenuEntry[];
+  onClose: () => void;
 }
 
 export interface ThumbnailProps {
@@ -279,6 +298,13 @@ export interface UiKit {
     accent: string;
     fontMono: string;
   };
+  /** Take the Escape key while something of yours is open that Escape should
+   *  close (an edit mode whose handles sit over the photo, a popover): the
+   *  newest taker gets the key, ahead of an on-image tool, and a slider's
+   *  value field keeps it for its own revert. Returns the function that
+   *  gives the key back: call it as soon as there is nothing left to close,
+   *  from a React effect's cleanup. Needs Safelight 3.2.4. */
+  onEscape(handler: () => void): () => void;
 }
 
 /** Who made a write or a registration. */
@@ -341,6 +367,10 @@ export interface SafelightAPI {
   ui: UiKit;
   components: {
     Thumbnail: ComponentType<ThumbnailProps>;
+    /** The right-click menu core surfaces use, placed at client `x`/`y` and
+     *  kept in the viewport. Closes on an outside click, Escape, scroll, or
+     *  choosing an item. */
+    ContextMenu: (props: ContextMenuProps) => JSX.Element;
   };
   stores: {
     create<T>(init: StateCreator<T>): StoreApi<T>;
@@ -348,7 +378,22 @@ export interface SafelightAPI {
     useUIStore: StoreApi<UIState>;
     useThemeStore: StoreApi<ThemeStoreState>;
   };
-  navigation: { goTo(module: string): void };
+  navigation: {
+    goTo(module: string): void;
+    /** The module this window was popped out for, or null in the main
+     *  window. Needs Safelight 3.2.7. */
+    ownModule(): string | null;
+  };
+  develop: {
+    /** The pointer in `el`'s layout px: the space an overlay's `rect`, the
+     *  mapping helpers and CSS left/top use. Interface scale zooms the page,
+     *  so clientX minus the element's left is off by the zoom. Needs Safelight
+     *  3.2.7. */
+    framePoint(el: Element, clientX: number, clientY: number): {
+      x: number;
+      y: number;
+    };
+  };
   catalog: {
     useVisiblePhotos(options?: { without?: readonly string[] }): CatalogPhoto[];
     usePhotoActions(): PhotoActions;

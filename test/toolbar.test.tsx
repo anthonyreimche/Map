@@ -87,7 +87,7 @@ describe("Toolbar", () => {
   });
 
   it("hides the Library filter toggle in a pop-out (detached) window", () => {
-    window.history.replaceState({}, "", "/?detached=map");
+    h.own.module = "map";
     render(<Toolbar />);
     expect(screen.queryByLabelText("Filter Library to map view")).toBeNull();
   });
@@ -127,8 +127,10 @@ describe("Toolbar", () => {
     store().getState().setOverlays([{ key: "k", label: "x", lines: [], points: [], bounds: null }]);
     render(<Toolbar />);
     fireEvent.click(screen.getByRole("button", { name: "Overlays" }));
-    fireEvent.keyDown(window, { key: "Escape" });
+    expect(h.escapes).toHaveLength(1);
+    act(() => h.escapes.at(-1)!());
     expect(screen.queryByRole("menu")).toBeNull();
+    expect(h.escapes).toHaveLength(0);
     fireEvent.click(screen.getByRole("button", { name: "Overlays" }));
     fireEvent.pointerDown(document.body);
     expect(screen.queryByRole("menu")).toBeNull();
@@ -136,12 +138,12 @@ describe("Toolbar", () => {
 });
 
 describe("isDetachedWindow", () => {
-  it("is false in the main window and true once `detached` is a non-empty query param", () => {
+  it("is false in the main window and true in a pop-out", () => {
     expect(isDetachedWindow()).toBe(false);
-    window.history.replaceState({}, "", "/?detached=map");
+    h.own.module = "map";
     expect(isDetachedWindow()).toBe(true);
-    window.history.replaceState({}, "", "/?detached=");
-    expect(isDetachedWindow()).toBe(false);
+    h.own.module = "library";
+    expect(isDetachedWindow()).toBe(true);
   });
 });
 

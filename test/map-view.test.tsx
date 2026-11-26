@@ -50,6 +50,7 @@ function fakePort(kind: MapPort["kind"] = "full") {
     addImage: [] as string[],
     updateImage: [] as string[],
     pixelRatios: [] as number[],
+    hitTests: [] as [number, number][],
   };
   let hits: RenderedHit[] = [];
   let bounds: Bounds = { west: -10, south: -10, east: 10, north: 10 };
@@ -100,7 +101,7 @@ function fakePort(kind: MapPort["kind"] = "full") {
     getCenter: () => ({ lon: 0, lat: 0 }),
     getZoom: () => 3,
     unproject: () => unprojected,
-    hitTest: (_x, _y, layers) => hits.filter((h) => layers.includes(h.layer)),
+    hitTest: (x, y, layers) => (calls.hitTests.push([x, y]), hits).filter((h) => layers.includes(h.layer)),
     setCursor: () => {},
     setPixelRatio: (r) => void calls.pixelRatios.push(r),
     remove: () => void (removed = true),
@@ -295,6 +296,13 @@ describe("MapView", () => {
     expect(fake.filterOf(LAYER_RING)).toEqual(selectionFilter(["a"]));
   });
 
+  it("hit-tests at the pointer in the layout px the app reports under its interface scale", async () => {
+    const canvas = await mount();
+    initRuntime({ ...h.api, develop: { ...h.api.develop, framePoint: (_el, x, y) => ({ x: x / 2, y: y / 2 }) } });
+    fireEvent.mouseMove(canvas, { clientX: 40, clientY: 20, buttons: 0 });
+    expect(fake.calls.hitTests.at(-1)).toEqual([20, 10]);
+  });
+
   it("selects on click, extends with Ctrl and Shift, and ignores a click after a drag", async () => {
     const canvas = await mount();
     fake.hit(pinHit("a"));
@@ -383,7 +391,7 @@ describe("MapView", () => {
     act(() => h.catalog.getState().select("b"));
     fake.unprojectTo({ lon: 200, lat: 10 });
     fireEvent.contextMenu(canvas, { clientX: 20, clientY: 20 });
-    fireEvent.click(within(screen.getByRole("menu")).getByRole("button", { name: "Place 1 selected photo here" }));
+    fireEvent.click(within(screen.getByRole("menu")).getByRole("menuitem", { name: "Place 1 selected photo here" }));
     await flush();
     expect(h.relocated[0].map((p) => [p.id, p.exif.gpsLatitude, p.exif.gpsLongitude])).toEqual([["b", 10, -160]]);
     expect(screen.queryByRole("menu")).toBeNull();
@@ -394,7 +402,7 @@ describe("MapView", () => {
     act(() => h.catalog.getState().select("b"));
     fake.unprojectTo({ lon: 200, lat: 10 });
     fireEvent.contextMenu(canvas, { clientX: 20, clientY: 20 });
-    fireEvent.click(within(screen.getByRole("menu")).getByRole("button", { name: "Set location…" }));
+    fireEvent.click(within(screen.getByRole("menu")).getByRole("menuitem", { name: "Set location…" }));
     expect(screen.queryByRole("menu")).toBeNull();
     expect(store().getState().locationRequest).toEqual({ ids: ["b"], initial: { lon: -160, lat: 10 } });
     const dialog = screen.getByRole("dialog", { name: "Set location" });
@@ -404,7 +412,7 @@ describe("MapView", () => {
   it("offers Set location from the map's menu only with a selection", async () => {
     const canvas = await mount();
     fireEvent.contextMenu(canvas, { clientX: 20, clientY: 20 });
-    expect((within(screen.getByRole("menu")).getByRole("button", { name: "Set location…" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((within(screen.getByRole("menu")).getByRole("menuitem", { name: "Set location…" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("moves the map's menu to a second right-click on the map", async () => {
@@ -415,16 +423,13 @@ describe("MapView", () => {
     expect([menu.style.left, menu.style.top]).toEqual(["50px", "60px"]);
   });
 
-  it("closes the map's menu on Escape, when the map moves, and when a pin's menu opens", async () => {
+  it("closes the map's menu when the map moves and when a pin's menu opens", async () => {
     const canvas = await mount();
     const openMenu = () => {
       fake.hit(null);
       fireEvent.contextMenu(canvas, { clientX: 20, clientY: 20 });
       expect(screen.getByRole("menu")).toBeTruthy();
     };
-    openMenu();
-    fireEvent.keyDown(window, { key: "Escape" });
-    expect(screen.queryByRole("menu")).toBeNull();
     openMenu();
     fake.fire("movestart");
     expect(screen.queryByRole("menu")).toBeNull();
